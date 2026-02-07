@@ -133,9 +133,15 @@ function startGame(roomCode, requesterId) {
   game.phase = 'debate';
   game.round = 1;
 
+  // Get list of all Gnosia player IDs
+  const gnosiaPlayerIds = playerArray
+    .filter(p => p.isGnosia)
+    .map(p => p.id);
+
   return {
     success: true,
     roleAssignments,
+    gnosiaPlayerIds,
     players: playerArray.map(p => ({
       id: p.id,
       name: p.name,
@@ -277,6 +283,12 @@ function checkWinCondition(game) {
     return { gameOver: true, winner: 'crew' };
   }
   if (aliveGnosia >= aliveCrew) {
+    // When Gnosia wins, mark all surviving crew as eliminated
+    game.players.forEach(player => {
+      if (!player.isGnosia && player.isAlive) {
+        player.isAlive = false;
+      }
+    });
     return { gameOver: true, winner: 'gnosia' };
   }
   return { gameOver: false, winner: null };

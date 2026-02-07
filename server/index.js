@@ -73,9 +73,21 @@ io.on('connection', (socket) => {
   socket.on('startGame', (roomCode) => {
     const result = gameManager.startGame(roomCode, socket.id);
     if (result.success) {
+      // Get Gnosia player info for display
+      const gnosiaPlayers = result.players.filter(p => 
+        result.gnosiaPlayerIds.includes(p.id)
+      );
+      
       // Send role assignments privately to each player
       result.roleAssignments.forEach(({ socketId, role, isGnosia }) => {
-        io.to(socketId).emit('roleAssigned', { role, isGnosia });
+        const roleData = { role, isGnosia };
+        
+        // If this player is Gnosia, send them the list of other Gnosia
+        if (isGnosia) {
+          roleData.gnosiaPlayers = gnosiaPlayers;
+        }
+        
+        io.to(socketId).emit('roleAssigned', roleData);
       });
       // Send game started to all players
       io.to(roomCode).emit('gameStarted', {

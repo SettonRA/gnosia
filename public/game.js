@@ -12,7 +12,8 @@ let gameState = {
     players: [],
     selectedVote: null,
     voteResults: [],
-    isSpectator: false
+    isSpectator: false,
+    gnosiaPlayerIds: []
 };
 
 // DOM Elements
@@ -249,7 +250,10 @@ function showVoteOptions() {
     const container = document.getElementById('vote-options');
     container.innerHTML = '';
     gameState.players.forEach(player => {
-        if (player.isAlive && player.id !== socket.id) {
+        // Don't show self, dead players, or other Gnosia (if you're Gnosia)
+        const isOtherGnosia = gameState.isGnosia && gameState.gnosiaPlayerIds && gameState.gnosiaPlayerIds.includes(player.id);
+        
+        if (player.isAlive && player.id !== socket.id && !isOtherGnosia) {
             const btn = document.createElement('button');
             btn.className = 'vote-btn';
             btn.textContent = player.name;
@@ -286,7 +290,10 @@ function showGnosiaEliminationOptions(alivePlayers) {
     readyBtn.classList.add('hidden');
 
     alivePlayers.forEach(player => {
-        if (player.id !== socket.id) {
+        // Don't show self or other Gnosia
+        const isOtherGnosia = gameState.gnosiaPlayerIds && gameState.gnosiaPlayerIds.includes(player.id);
+        
+        if (player.id !== socket.id && !isOtherGnosia) {
             const btn = document.createElement('button');
             btn.className = 'vote-btn';
             btn.textContent = player.name;
@@ -384,7 +391,7 @@ socket.on('playerJoined', ({ players, message }) => {
     showNotification(message);
 });
 
-socket.on('roleAssigned', ({ role, isGnosia }) => {
+socket.on('roleAssigned', ({ role, isGnosia, gnosiaPlayers }) => {
     gameState.role = role;
     gameState.isGnosia = isGnosia;
     gameState.isSpectator = false; // No longer a spectator once role is assigned
@@ -392,6 +399,21 @@ socket.on('roleAssigned', ({ role, isGnosia }) => {
     const roleDisplay = document.getElementById('role-display');
     if (isGnosia) {
         roleDisplay.classList.add('gnosia');
+        
+        // Store Gnosia player IDs for filtering
+        if (gnosiaPlayers) {
+            gameState.gnosiaPlayerIds = gnosiaPlayers.map(p => p.id);
+            
+            // Show other Gnosia to this player
+            const gnosiaNames = gnosiaPlayers
+                .filter(p => p.id !== socket.id)
+                .map(p => p.name)
+                .join(', ');
+            
+            if (gnosiaNames) {
+                showNotification(`Your fellow Gnosia: ${gnosiaNames}`);
+            }
+        }
     }
 });
 
