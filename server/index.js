@@ -15,6 +15,38 @@ const io = new Server(httpServer, {
 
 const PORT = process.env.PORT || 3000;
 
+// Helper function to handle warp phase end
+function handleWarpPhaseEnd(io, roomCode, warpResult) {
+  if (warpResult.wasProtected) {
+    // Player was protected by Guardian
+    io.to(roomCode).emit('playerProtected', {
+      round: warpResult.round,
+      players: warpResult.players
+    });
+  } else if (warpResult.eliminatedPlayer) {
+    // Player was eliminated
+    io.to(roomCode).emit('playerEliminated', {
+      eliminatedPlayer: warpResult.eliminatedPlayer,
+      round: warpResult.round,
+      players: warpResult.players
+    });
+  }
+
+  // Check for game end
+  if (warpResult.gameOver) {
+    io.to(roomCode).emit('gameOver', {
+      winner: warpResult.winner,
+      finalState: warpResult.finalState
+    });
+  } else {
+    // Start new debate phase
+    io.to(roomCode).emit('phaseChange', { 
+      phase: 'debate',
+      round: warpResult.round
+    });
+  }
+}
+
 // Serve static files
 app.use(express.static(path.join(__dirname, '../public')));
 
@@ -154,35 +186,8 @@ io.on('connection', (socket) => {
   socket.on('gnosiaEliminate', ({ roomCode, targetPlayerId }) => {
     const result = gameManager.gnosiaEliminate(roomCode, socket.id, targetPlayerId);
     if (result.success) {
-      if (result.wasProtected) {
-        // Player was protected by Guardian
-        io.to(roomCode).emit('playerProtected', {
-          round: result.round,
-          players: result.players
-        });
-      } else {
-        // Player was eliminated
-        io.to(roomCode).emit('playerEliminated', {
-          eliminatedPlayer: result.eliminatedPlayer,
-          round: result.round,
-          players: result.players
-        });
-      }
-
-      // Check for game end
-      if (result.gameOver) {
-        io.to(roomCode).emit('gameOver', {
-          winner: result.winner,
-          finalState: result.finalState
-        });
-      } else {
-        // Start new debate phase
-        gameManager.updatePhase(roomCode, 'debate');
-        io.to(roomCode).emit('phaseChange', { 
-          phase: 'debate',
-          round: result.round
-        });
-      }
+      // Just confirm selection, don't end phase yet
+      socket.emit('actionConfirmed', { message: 'Target selected. Waiting for other actions...' });
     } else {
       socket.emit('error', { message: result.error });
     }
@@ -197,6 +202,14 @@ io.on('connection', (socket) => {
         targetName: result.targetName,
         result: result.result
       });
+      
+      // Check if all actions complete
+      if (result.allComplete) {
+        const warpResult = gameManager.completeWarpPhase(roomCode);
+        if (warpResult.success) {
+          handleWarpPhaseEnd(io, roomCode, warpResult);
+        }
+      }
     } else {
       socket.emit('error', { message: result.error });
     }
@@ -211,6 +224,14 @@ io.on('connection', (socket) => {
         targetName: result.targetName,
         result: result.result
       });
+      
+      // Check if all actions complete
+      if (result.allComplete) {
+        const warpResult = gameManager.completeWarpPhase(roomCode);
+        if (warpResult.success) {
+          handleWarpPhaseEnd(io, roomCode, warpResult);
+        }
+      }
     } else {
       socket.emit('error', { message: result.error });
     }
@@ -224,6 +245,14 @@ io.on('connection', (socket) => {
         targetId: targetPlayerId,
         targetName: result.targetName
       });
+      
+      // Check if all actions complete
+      if (result.allComplete) {
+        const warpResult = gameManager.completeWarpPhase(roomCode);
+        if (warpResult.success) {
+          handleWarpPhaseEnd(io, roomCode, warpResult);
+        }
+      }
     } else {
       socket.emit('error', { message: result.error });
     }

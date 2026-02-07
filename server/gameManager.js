@@ -336,11 +336,73 @@ function gnosiaEliminate(roomCode, gnosiaId, targetPlayerId) {
   // Mark that Gnosia elimination action has been taken
   game.warpActions.gnosiaElimination = targetPlayerId;
 
-  // Check if Guardian protected this player
+  // Don't end phase immediately - let helper roles complete their actions
+  // Just confirm the selection
+  return {
+    success: true,
+    waiting: true,
+    targetPlayerId
+  };
+}
+
+function checkWarpActionsComplete(game) {
+  // Check if all alive helper roles and Gnosia have acted
+  const alivePlayers = Array.from(game.players.values()).filter(p => p.isAlive);
+  
+  // Check if Gnosia has acted
+  if (!game.warpActions.gnosiaElimination) {
+    return false;
+  }
+  
+  // Check if alive Engineers have acted
+  for (const engineerId of game.helperRoles.engineer) {
+    const engineer = game.players.get(engineerId);
+    if (engineer && engineer.isAlive && !game.warpActions.engineerInvestigation) {
+      return false;
+    }
+  }
+  
+  // Check if alive Doctors have acted (only if there are dead players)
+  const deadPlayers = Array.from(game.players.values()).filter(p => !p.isAlive);
+  if (deadPlayers.length > 0) {
+    for (const doctorId of game.helperRoles.doctor) {
+      const doctor = game.players.get(doctorId);
+      if (doctor && doctor.isAlive && !game.warpActions.doctorInvestigation) {
+        return false;
+      }
+    }
+  }
+  
+  // Check if alive Guardians have acted
+  for (const guardianId of game.helperRoles.guardian) {
+    const guardian = game.players.get(guardianId);
+    if (guardian && guardian.isAlive && !game.warpActions.guardianProtection) {
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+function completeWarpPhase(roomCode) {
+  const game = games.get(roomCode);
+  if (!game) {
+    return { success: false, error: 'Room not found' };
+  }
+  if (game.phase !== 'warp') {
+    return { success: false, error: 'Not in warp phase' };
+  }
+
+  const targetPlayerId = game.warpActions.gnosiaElimination;
+  if (!targetPlayerId) {
+    return { success: false, error: 'No elimination target' };
+  }
+
+  const target = game.players.get(targetPlayerId);
   const wasProtected = game.warpActions.guardianProtection === targetPlayerId;
   
   let eliminatedPlayer = null;
-  if (!wasProtected) {
+  if (!wasProtected && target) {
     target.isAlive = false;
     eliminatedPlayer = {
       id: target.id,
@@ -360,7 +422,7 @@ function gnosiaEliminate(roomCode, gnosiaId, targetPlayerId) {
   game.phase = 'debate';
   
   // Increment turn index for next Gnosia elimination
-  if (game.gnosiaTurnOrder) {
+  if (game.gnosiaEliminationTurnIndex !== undefined) {
     game.gnosiaEliminationTurnIndex++;
   }
 
@@ -416,11 +478,15 @@ function engineerInvestigate(roomCode, engineerId, targetPlayerId) {
   
   // Mark action as completed
   game.warpActions.engineerInvestigation = true;
+  
+  // Check if all actions complete
+  const allComplete = checkWarpActionsComplete(game);
 
   return {
     success: true,
     targetName: target.name,
-    result
+    result,
+    allComplete
   };
 }
 
@@ -457,11 +523,15 @@ function doctorInvestigate(roomCode, doctorId, targetPlayerId) {
   
   // Mark action as completed
   game.warpActions.doctorInvestigation = true;
+  
+  // Check if all actions complete
+  const allComplete = checkWarpActionsComplete(game);
 
   return {
     success: true,
     targetName: target.name,
-    result
+    result,
+    allComplete
   };
 }
 
@@ -491,10 +561,14 @@ function guardianProtect(roomCode, guardianId, targetPlayerId) {
 
   // Store protected player
   game.warpActions.guardianProtection = targetPlayerId;
+  
+  // Check if all actions complete
+  const allComplete = checkWarpActionsComplete(game);
 
   return {
     success: true,
-    targetName: target.name
+    targetName: target.name,
+    allComplete
   };
 }
 
@@ -726,6 +800,7 @@ module.exports = {
   engineerInvestigate,
   doctorInvestigate,
   guardianProtect,
+  completeWarpPhase,
   updatePhase,
   getWarpInfo,
   markPlayerReady,
