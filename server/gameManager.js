@@ -31,7 +31,8 @@ function createRoom(socketId, playerName, isPublic = false) {
     round: 0,
     votes: new Map(),
     started: false,
-    isPublic: isPublic
+    isPublic: isPublic,
+    gnosiaEliminationTurnIndex: 0
   });
   return roomCode;
 }
@@ -133,10 +134,14 @@ function startGame(roomCode, requesterId) {
   game.phase = 'debate';
   game.round = 1;
 
-  // Get list of all Gnosia player IDs
+  // Get list of all Gnosia player IDs and initialize turn order
   const gnosiaPlayerIds = playerArray
     .filter(p => p.isGnosia)
     .map(p => p.id);
+  
+  // Store the Gnosia turn order in the game state
+  game.gnosiaTurnOrder = [...gnosiaPlayerIds];
+  game.gnosiaEliminationTurnIndex = 0;
 
   return {
     success: true,
@@ -243,6 +248,12 @@ function gnosiaEliminate(roomCode, gnosiaId, targetPlayerId) {
   if (!gnosia || !gnosia.isGnosia || !gnosia.isAlive) {
     return { success: false, error: 'Only alive Gnosia can eliminate' };
   }
+  
+  // Check if it's this Gnosia player's turn
+  const warpInfo = getWarpInfo(roomCode);
+  if (warpInfo.currentGnosiaPlayer !== gnosiaId) {
+    return { success: false, error: 'Not your turn to eliminate' };
+  }
 
   const target = game.players.get(targetPlayerId);
   if (!target || !target.isAlive || target.isGnosia) {
@@ -252,6 +263,11 @@ function gnosiaEliminate(roomCode, gnosiaId, targetPlayerId) {
   target.isAlive = false;
   game.round++;
   game.phase = 'debate';
+  
+  // Increment turn index for next Gnosia elimination
+  if (game.gnosiaTurnOrder) {
+    game.gnosiaEliminationTurnIndex++;
+  }
 
   // Check win conditions
   const { gameOver, winner } = checkWinCondition(game);
@@ -310,13 +326,30 @@ function getGameState(game) {
 function getWarpInfo(roomCode) {
   const game = games.get(roomCode);
   if (!game) {
-    return { gnosiaPlayers: [], alivePlayers: [] };
+    return { currentGnosiaPlayer: null, alivePlayers: [] };
   }
   
   const alivePlayers = Array.from(game.players.values()).filter(p => p.isAlive);
+  const aliveGnosia = alivePlayers.filter(p => p.isGnosia);
+  
+  // Determine which Gnosia player's turn it is
+  let currentGnosiaPlayer = null;
+  if (aliveGnosia.length > 0 && game.gnosiaTurnOrder) {
+    // Filter turn order to only alive Gnosia
+    const aliveGnosiaTurnOrder = game.gnosiaTurnOrder.filter(id => {
+      const player = game.players.get(id);
+      return player && player.isAlive && player.isGnosia;
+    });
+    
+    if (aliveGnosiaTurnOrder.length > 0) {
+      // Ensure turn index is within bounds
+      game.gnosiaEliminationTurnIndex = game.gnosiaEliminationTurnIndex % aliveGnosiaTurnOrder.length;
+      currentGnosiaPlayer = aliveGnosiaTurnOrder[game.gnosiaEliminationTurnIndex];
+    }
+  }
   
   return {
-    gnosiaPlayers: alivePlayers.filter(p => p.isGnosia).map(p => p.id),
+    currentGnosiaPlayer,
     alivePlayers: alivePlayers.map(p => ({
       id: p.id,
       name: p.name
