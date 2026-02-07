@@ -549,20 +549,13 @@ socket.on('roleAssigned', ({ role, isGnosia, gnosiaPlayers, helperRoleCounts, is
         }
     }
     
-    // Update helper role counts in Active Roles
+    // Update all role counts in Roles section
     if (helperRoleCounts) {
-        if (helperRoleCounts.engineer > 0) {
-            document.getElementById('engineer-count').textContent = helperRoleCounts.engineer;
-            document.getElementById('engineer-count').parentElement.style.display = 'flex';
-        }
-        if (helperRoleCounts.doctor > 0) {
-            document.getElementById('doctor-count').textContent = helperRoleCounts.doctor;
-            document.getElementById('doctor-count').parentElement.style.display = 'flex';
-        }
-        if (helperRoleCounts.guardian > 0) {
-            document.getElementById('guardian-count').textContent = helperRoleCounts.guardian;
-            document.getElementById('guardian-count').parentElement.style.display = 'flex';
-        }
+        document.getElementById('gnosia-count').textContent = helperRoleCounts.gnosia || 0;
+        document.getElementById('engineer-count').textContent = helperRoleCounts.engineer || 0;
+        document.getElementById('doctor-count').textContent = helperRoleCounts.doctor || 0;
+        document.getElementById('guardian-count').textContent = helperRoleCounts.guardian || 0;
+        document.getElementById('crew-count').textContent = helperRoleCounts.crew || 0;
     }
 });
 

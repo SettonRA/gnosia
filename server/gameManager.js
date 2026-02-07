@@ -34,9 +34,9 @@ function createRoom(socketId, playerName, isPublic = false) {
     isPublic: isPublic,
     gnosiaEliminationTurnIndex: 0,
     helperRoles: {
-      engineer: null,
-      doctor: null,
-      guardian: null
+      engineer: [],
+      doctor: [],
+      guardian: []
     },
     warpActions: {
       engineerInvestigation: null,
@@ -206,9 +206,11 @@ function startGame(roomCode, requesterId) {
 
   // Count helper roles
   const helperRoleCounts = {
-    engineer: game.helperRoles.engineer ? 1 : 0,
-    doctor: game.helperRoles.doctor ? 1 : 0,
-    guardian: game.helperRoles.guardian ? 1 : 0
+    engineer: game.helperRoles.engineer.length,
+    doctor: game.helperRoles.doctor.length,
+    guardian: game.helperRoles.guardian.length,
+    crew: playerArray.filter(p => !p.isGnosia && p.role === ROLES.CREW).length,
+    gnosia: gnosiaPlayerIds.length
   };
 
   return {
@@ -390,7 +392,7 @@ function engineerInvestigate(roomCode, engineerId, targetPlayerId) {
   }
 
   // Verify Engineer
-  if (game.helperRoles.engineer !== engineerId) {
+  if (!game.helperRoles.engineer.includes(engineerId)) {
     return { success: false, error: 'You are not the Engineer' };
   }
 
@@ -431,7 +433,7 @@ function doctorInvestigate(roomCode, doctorId, targetPlayerId) {
   }
 
   // Verify Doctor
-  if (game.helperRoles.doctor !== doctorId) {
+  if (!game.helperRoles.doctor.includes(doctorId)) {
     return { success: false, error: 'You are not the Doctor' };
   }
 
@@ -472,7 +474,7 @@ function guardianProtect(roomCode, guardianId, targetPlayerId) {
   }
 
   // Verify Guardian
-  if (game.helperRoles.guardian !== guardianId) {
+  if (!game.helperRoles.guardian.includes(guardianId)) {
     return { success: false, error: 'You are not the Guardian' };
   }
 

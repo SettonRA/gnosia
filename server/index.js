@@ -85,9 +85,9 @@ io.on('connection', (socket) => {
           isGnosia,
           gnosiaPlayers, // Send to all players for the count display
           helperRoleCounts: result.helperRoleCounts,
-          isEngineer: result.helperRoles.engineer === socketId,
-          isDoctor: result.helperRoles.doctor === socketId,
-          isGuardian: result.helperRoles.guardian === socketId
+          isEngineer: result.helperRoles.engineer.includes(socketId),
+          isDoctor: result.helperRoles.doctor.includes(socketId),
+          isGuardian: result.helperRoles.guardian.includes(socketId)
         };
         
         io.to(socketId).emit('roleAssigned', roleData);
