@@ -28,26 +28,41 @@ io.on('connection', (socket) => {
   console.log(`Player connected: ${socket.id}`);
 
   // Create or join room
-  socket.on('createRoom', (playerName) => {
-    const roomCode = gameManager.createRoom(socket.id, playerName);
+  socket.on('createRoom', ({ playerName, isPublic }) => {
+    const roomCode = gameManager.createRoom(socket.id, playerName, isPublic);
     socket.join(roomCode);
     socket.emit('roomCreated', { roomCode, playerName });
-    console.log(`Room created: ${roomCode} by ${playerName}`);
+    console.log(`Room created: ${roomCode} by ${playerName} (public: ${isPublic})`);
   });
 
   socket.on('joinRoom', ({ roomCode, playerName }) => {
     const result = gameManager.joinRoom(roomCode, socket.id, playerName);
     if (result.success) {
       socket.join(roomCode);
-      socket.emit('roomJoined', { roomCode, playerName });
-      io.to(roomCode).emit('playerJoined', {
-        players: result.players,
-        message: `${playerName} joined the game`
-      });
-      console.log(`${playerName} joined room: ${roomCode}`);
+      socket.emit('roomJoined', { roomCode, isSpectator: result.isSpectator });
+      
+      if (result.isSpectator) {
+        io.to(roomCode).emit('playerJoined', {
+          players: result.players,
+          message: `${playerName} joined as spectator`
+        });
+        console.log(`${playerName} joined room: ${roomCode} as spectator`);
+      } else {
+        io.to(roomCode).emit('playerJoined', {
+          players: result.players,
+          message: `${playerName} joined the game`
+        });
+        console.log(`${playerName} joined room: ${roomCode}`);
+      }
     } else {
       socket.emit('error', { message: result.error });
     }
+  });
+  
+  // Get public games list
+  socket.on('getPublicGames', () => {
+    const publicGames = gameManager.getPublicGames();
+    socket.emit('publicGamesList', { games: publicGames });
   });
 
   // Start game

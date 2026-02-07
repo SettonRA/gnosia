@@ -14,7 +14,7 @@ function generateRoomCode() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-function createRoom(socketId, playerName) {
+function createRoom(socketId, playerName, isPublic = false) {
   const roomCode = generateRoomCode();
   games.set(roomCode, {
     host: socketId,
@@ -26,10 +26,12 @@ function createRoom(socketId, playerName) {
       isGnosia: false,
       ready: false
     }]]),
+    spectators: new Map(),
     phase: 'lobby',
     round: 0,
     votes: new Map(),
-    started: false
+    started: false,
+    isPublic: isPublic
   });
   return roomCode;
 }
@@ -39,9 +41,29 @@ function joinRoom(roomCode, socketId, playerName) {
   if (!game) {
     return { success: false, error: 'Room not found' };
   }
+  
+  // If game has started, join as spectator
   if (game.started) {
-    return { success: false, error: 'Game already started' };
+    if (game.spectators.size + game.players.size >= 20) {
+      return { success: false, error: 'Room is full' };
+    }
+    
+    game.spectators.set(socketId, {
+      id: socketId,
+      name: playerName
+    });
+    
+    return {
+      success: true,
+      isSpectator: true,
+      players: Array.from(game.players.values()).map(p => ({
+        id: p.id,
+        name: p.name,
+        isAlive: p.isAlive
+      }))
+    };
   }
+  
   if (game.players.size >= 15) {
     return { success: false, error: 'Room is full' };
   }
@@ -57,6 +79,7 @@ function joinRoom(roomCode, socketId, playerName) {
 
   return {
     success: true,
+    isSpectator: false,
     players: Array.from(game.players.values()).map(p => ({
       id: p.id,
       name: p.name
@@ -344,6 +367,19 @@ function restartGame(roomCode, requesterId) {
     player.isGnosia = false;
     player.ready = false;
   });
+  
+  // Convert spectators to players
+  game.spectators.forEach((spectator, socketId) => {
+    game.players.set(socketId, {
+      id: socketId,
+      name: spectator.name,
+      isAlive: true,
+      role: null,
+      isGnosia: false,
+      ready: false
+    });
+  });
+  game.spectators.clear();
 
   // Reset game state
   game.phase = 'lobby';
@@ -389,6 +425,23 @@ function getGamesCount() {
   return games.size;
 }
 
+function getPublicGames() {
+  const publicGames = [];
+  
+  for (const [roomCode, game] of games.entries()) {
+    if (game.isPublic) {
+      publicGames.push({
+        roomCode,
+        playerCount: game.players.size,
+        started: game.started,
+        round: game.round
+      });
+    }
+  }
+  
+  return publicGames;
+}
+
 module.exports = {
   createRoom,
   joinRoom,
@@ -400,5 +453,6 @@ module.exports = {
   markPlayerReady,
   restartGame,
   handleDisconnect,
-  getGamesCount
+  getGamesCount,
+  getPublicGames
 };

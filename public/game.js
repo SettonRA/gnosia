@@ -11,7 +11,8 @@ let gameState = {
     isHost: false,
     players: [],
     selectedVote: null,
-    voteResults: []
+    voteResults: [],
+    isSpectator: false
 };
 
 // DOM Elements
@@ -41,6 +42,8 @@ document.getElementById('create-room-btn').addEventListener('click', () => {
     showScreen('room');
     document.getElementById('room-title').textContent = 'Create Room';
     document.getElementById('room-code-input').classList.add('hidden');
+    document.getElementById('public-checkbox-container').classList.remove('hidden');
+    document.getElementById('public-games-list').classList.add('hidden');
     document.getElementById('submit-room-btn').textContent = 'Create';
     document.getElementById('submit-room-btn').onclick = createRoom;
 });
@@ -49,14 +52,18 @@ document.getElementById('join-room-btn').addEventListener('click', () => {
     showScreen('room');
     document.getElementById('room-title').textContent = 'Join Room';
     document.getElementById('room-code-input').classList.remove('hidden');
+    document.getElementById('public-checkbox-container').classList.add('hidden');
+    document.getElementById('public-games-list').classList.remove('hidden');
     document.getElementById('submit-room-btn').textContent = 'Join';
     document.getElementById('submit-room-btn').onclick = joinRoom;
+    loadPublicGames();
 });
 
 document.getElementById('back-btn').addEventListener('click', () => {
     showScreen('landing');
     document.getElementById('player-name-input').value = '';
     document.getElementById('room-code-input').value = '';
+    document.getElementById('public-game-checkbox').checked = false;
 });
 
 function createRoom() {
@@ -65,9 +72,10 @@ function createRoom() {
         showNotification('Please enter your name');
         return;
     }
+    const isPublic = document.getElementById('public-game-checkbox').checked;
     gameState.playerName = playerName;
     gameState.isHost = true;
-    socket.emit('createRoom', playerName);
+    socket.emit('createRoom', { playerName, isPublic });
 }
 
 function joinRoom() {
@@ -75,6 +83,20 @@ function joinRoom() {
     const roomCode = document.getElementById('room-code-input').value.trim().toUpperCase();
     if (!playerName || !roomCode) {
         showNotification('Please enter your name and room code');
+        return;
+    }
+    gameState.playerName = playerName;
+    socket.emit('joinRoom', { roomCode, playerName });
+}
+
+function loadPublicGames() {
+    socket.emit('getPublicGames');
+}
+
+function joinPublicGame(roomCode) {
+    const playerName = document.getElementById('player-name-input').value.trim();
+    if (!playerName) {
+        showNotification('Please enter your name first');
         return;
     }
     gameState.playerName = playerName;
@@ -166,36 +188,56 @@ function updatePhase(phase, instructions) {
     readyBtn.classList.remove('hidden');
     readyBtn.disabled = false;
     readyBtn.textContent = 'Ready for Next Phase';
+    
+    // If spectator, hide all interactive elements
+    if (gameState.isSpectator) {
+        readyBtn.classList.add('hidden');
+        votingSection.classList.add('hidden');
+        gnosiaSection.classList.add('hidden');
+    }
 
     if (phase === 'debate') {
         phaseText.textContent = 'Debate Phase';
-        instructionText.textContent = 'Discuss with others on voice chat who you think is Gnosia.';
         
-        // Check if current player is alive
-        const currentPlayer = gameState.players.find(p => p.id === socket.id);
-        if (currentPlayer && !currentPlayer.isAlive) {
-            readyBtn.classList.add('hidden');
-            instructionText.textContent = 'You are eliminated. Watch as the game continues...';
+        if (gameState.isSpectator) {
+            instructionText.textContent = 'Spectating... You will join in the next game.';
+        } else {
+            instructionText.textContent = 'Discuss with others on voice chat who you think is Gnosia.';
+            
+            // Check if current player is alive
+            const currentPlayer = gameState.players.find(p => p.id === socket.id);
+            if (currentPlayer && !currentPlayer.isAlive) {
+                readyBtn.classList.add('hidden');
+                instructionText.textContent = 'You are eliminated. Watch as the game continues...';
+            }
         }
     } else if (phase === 'voting') {
         gameState.selectedVote = null; // Reset vote
         phaseText.textContent = 'Voting Phase';
         
-        // Check if current player is alive
-        const currentPlayer = gameState.players.find(p => p.id === socket.id);
-        if (currentPlayer && currentPlayer.isAlive) {
-            instructionText.textContent = 'Vote for who to put in Deep Freeze.';
-            votingSection.classList.remove('hidden');
+        if (gameState.isSpectator) {
+            instructionText.textContent = 'Spectating the vote...';
             readyBtn.classList.add('hidden');
-            showVoteOptions();
         } else {
-            instructionText.textContent = 'You are eliminated. Watch as others vote...';
-            readyBtn.classList.add('hidden');
+            // Check if current player is alive
+            const currentPlayer = gameState.players.find(p => p.id === socket.id);
+            if (currentPlayer && currentPlayer.isAlive) {
+                instructionText.textContent = 'Vote for who to put in Deep Freeze.';
+                votingSection.classList.remove('hidden');
+                readyBtn.classList.add('hidden');
+                showVoteOptions();
+            } else {
+                instructionText.textContent = 'You are eliminated. Watch as others vote...';
+                readyBtn.classList.add('hidden');
+            }
         }
     } else if (phase === 'warp') {
         phaseText.textContent = 'Warp Phase';
         readyBtn.classList.add('hidden'); // Hide ready button during warp
-        if (gameState.isGnosia) {
+        
+        if (gameState.isSpectator) {
+            instructionText.textContent = 'Spectating the warp phase...';
+        } else if (gameState.isGnosia) {
             instructionText.textContent = 'Select a crew member to eliminate during the warp...';
         } else {
             instructionText.textContent = 'The ship is warping. Gnosia are selecting their target...';
@@ -280,11 +322,47 @@ socket.on('roomCreated', ({ roomCode, playerName }) => {
     showNotification('Room created!');
 });
 
-socket.on('roomJoined', ({ roomCode }) => {
+socket.on('roomJoined', ({ roomCode, isSpectator }) => {
     gameState.roomCode = roomCode;
+    gameState.isSpectator = isSpectator || false;
     showScreen('lobby');
     document.getElementById('display-room-code').textContent = roomCode;
-    showNotification('Joined room!');
+    if (isSpectator) {
+        showNotification('Joined as spectator! You\'ll play in the next game.');
+    } else {
+        showNotification('Joined room!');
+    }
+});
+
+socket.on('publicGamesList', ({ games }) => {
+    const container = document.getElementById('games-container');
+    container.innerHTML = '';
+    
+    if (games.length === 0) {
+        container.innerHTML = '<div class="empty-games">No public games available</div>';
+        return;
+    }
+    
+    games.forEach(game => {
+        const gameEl = document.createElement('div');
+        gameEl.className = 'game-item';
+        gameEl.onclick = () => joinPublicGame(game.roomCode);
+        
+        const statusClass = game.started ? 'in-progress' : 'lobby';
+        const statusText = game.started ? 'In Progress' : 'Lobby';
+        const joinText = game.started ? '(Join as Spectator)' : '';
+        
+        gameEl.innerHTML = `
+            <div class="game-item-header">
+                <span class="game-item-code">${game.roomCode}</span>
+                <span class="game-item-status ${statusClass}">${statusText}</span>
+            </div>
+            <div class="game-item-info">
+                ${game.playerCount} player${game.playerCount !== 1 ? 's' : ''} ${joinText}
+            </div>
+        `;
+        container.appendChild(gameEl);
+    });
 });
 
 socket.on('playerJoined', ({ players, message }) => {
@@ -296,6 +374,7 @@ socket.on('playerJoined', ({ players, message }) => {
 socket.on('roleAssigned', ({ role, isGnosia }) => {
     gameState.role = role;
     gameState.isGnosia = isGnosia;
+    gameState.isSpectator = false; // No longer a spectator once role is assigned
     document.getElementById('player-role').textContent = role;
     const roleDisplay = document.getElementById('role-display');
     if (isGnosia) {
@@ -305,11 +384,23 @@ socket.on('roleAssigned', ({ role, isGnosia }) => {
 
 socket.on('gameStarted', ({ phase, players, round }) => {
     gameState.players = players;
-    showScreen('game');
-    document.getElementById('round-number').textContent = round;
-    updateGamePlayerList(players);
-    updatePhase(phase);
-    showNotification('Game started!');
+    
+    // If we're a spectator, show spectator UI
+    if (gameState.isSpectator) {
+        showScreen('game');
+        document.getElementById('round-number').textContent = round;
+        document.getElementById('player-role').textContent = 'Spectator';
+        document.getElementById('role-display').style.background = 'rgba(107, 114, 128, 0.3)';
+        updateGamePlayerList(players);
+        updatePhase(phase);
+        showNotification('Watching game as spectator...');
+    } else {
+        showScreen('game');
+        document.getElementById('round-number').textContent = round;
+        updateGamePlayerList(players);
+        updatePhase(phase);
+        showNotification('Game started!');
+    }
 });
 
 socket.on('phaseChange', ({ phase, round }) => {
