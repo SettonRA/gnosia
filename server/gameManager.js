@@ -258,6 +258,15 @@ function getGameState(game) {
   };
 }
 
+function updatePhase(roomCode, phase) {
+  const game = games.get(roomCode);
+  if (!game) {
+    return { success: false, error: 'Room not found' };
+  }
+  game.phase = phase;
+  return { success: true };
+}
+
 function markPlayerReady(roomCode, playerId) {
   const game = games.get(roomCode);
   if (!game) {
@@ -327,6 +336,7 @@ module.exports = {
   startGame,
   submitVote,
   gnosiaEliminate,
+  updatePhase,
   markPlayerReady,
   handleDisconnect,
   getGamesCount

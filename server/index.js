@@ -143,6 +143,7 @@ io.on('connection', (socket) => {
         });
       } else if (phase === 'debate') {
         // Move to voting
+        const updateResult = gameManager.updatePhase(roomCode, 'voting');
         io.to(roomCode).emit('phaseChange', { 
           phase: 'voting',
           alivePlayers: result.alivePlayers

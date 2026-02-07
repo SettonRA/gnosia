@@ -144,6 +144,7 @@ function updatePhase(phase, instructions) {
         phaseText.textContent = 'Debate Phase';
         instructionText.textContent = 'Discuss with others on voice chat who you think is Gnosia.';
     } else if (phase === 'voting') {
+        gameState.selectedVote = null; // Reset vote
         phaseText.textContent = 'Voting Phase';
         instructionText.textContent = 'Vote for who to put in Deep Freeze.';
         votingSection.classList.remove('hidden');
@@ -174,7 +175,17 @@ function showVoteOptions() {
 }
 
 function submitVote(playerId, btnElement) {
-    document.querySelectorAll('.vote-btn').forEach(btn => btn.classList.remove('selected'));
+    // Prevent vote changes
+    if (gameState.selectedVote) {
+        showNotification('Vote already submitted');
+        return;
+    }
+    
+    gameState.selectedVote = playerId;
+    document.querySelectorAll('.vote-btn').forEach(btn => {
+        btn.disabled = true;
+        btn.classList.remove('selected');
+    });
     btnElement.classList.add('selected');
     socket.emit('submitVote', { roomCode: gameState.roomCode, targetPlayerId: playerId });
     showNotification('Vote submitted');
