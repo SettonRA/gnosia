@@ -56,11 +56,15 @@ function joinRoom(roomCode, socketId, playerName) {
     return {
       success: true,
       isSpectator: true,
-      players: Array.from(game.players.values()).map(p => ({
-        id: p.id,
-        name: p.name,
-        isAlive: p.isAlive
-      }))
+      gameState: {
+        phase: game.phase,
+        round: game.round,
+        players: Array.from(game.players.values()).map(p => ({
+          id: p.id,
+          name: p.name,
+          isAlive: p.isAlive
+        }))
+      }
     };
   }
   

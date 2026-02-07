@@ -39,11 +39,15 @@ io.on('connection', (socket) => {
     const result = gameManager.joinRoom(roomCode, socket.id, playerName);
     if (result.success) {
       socket.join(roomCode);
-      socket.emit('roomJoined', { roomCode, isSpectator: result.isSpectator });
+      socket.emit('roomJoined', { 
+        roomCode, 
+        isSpectator: result.isSpectator,
+        gameState: result.gameState
+      });
       
       if (result.isSpectator) {
         io.to(roomCode).emit('playerJoined', {
-          players: result.players,
+          players: result.gameState.players,
           message: `${playerName} joined as spectator`
         });
         console.log(`${playerName} joined room: ${roomCode} as spectator`);

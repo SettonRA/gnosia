@@ -322,15 +322,28 @@ socket.on('roomCreated', ({ roomCode, playerName }) => {
     showNotification('Room created!');
 });
 
-socket.on('roomJoined', ({ roomCode, isSpectator }) => {
+socket.on('roomJoined', ({ roomCode, isSpectator, gameState: serverGameState }) => {
     gameState.roomCode = roomCode;
     gameState.isSpectator = isSpectator || false;
-    showScreen('lobby');
-    document.getElementById('display-room-code').textContent = roomCode;
-    if (isSpectator) {
+    
+    // If joining as spectator to active game, show game screen
+    if (isSpectator && serverGameState) {
+        gameState.players = serverGameState.players;
+        showScreen('game');
+        document.getElementById('round-number').textContent = serverGameState.round;
+        document.getElementById('player-role').textContent = 'Spectator';
+        document.getElementById('role-display').style.background = 'rgba(107, 114, 128, 0.3)';
+        updateGamePlayerList(serverGameState.players);
+        updatePhase(serverGameState.phase);
         showNotification('Joined as spectator! You\'ll play in the next game.');
     } else {
-        showNotification('Joined room!');
+        showScreen('lobby');
+        document.getElementById('display-room-code').textContent = roomCode;
+        if (isSpectator) {
+            showNotification('Joined as spectator! You\'ll play in the next game.');
+        } else {
+            showNotification('Joined room!');
+        }
     }
 });
 
