@@ -151,8 +151,12 @@ function updateGamePlayerList(players) {
             }
         }
         
+        // Show Gnosia label if current player is Gnosia and this player is also Gnosia
+        const isOtherGnosia = gameState.isGnosia && gameState.gnosiaPlayerIds && gameState.gnosiaPlayerIds.includes(player.id);
+        const gnosiaLabel = isOtherGnosia ? ' <span style="color: #ff6b6b; font-weight: bold;">[Gnosia]</span>' : '';
+        
         playerEl.innerHTML = `
-            <strong>${player.name}${voteCount}</strong>
+            <strong>${player.name}${voteCount}${gnosiaLabel}</strong>
             ${player.isAlive ? '<span style="color: #4ade80;">● Alive</span>' : '<span style="color: #f87171;">● Frozen/Dead</span>'}
         `;
         container.appendChild(playerEl);
