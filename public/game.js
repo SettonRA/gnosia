@@ -211,6 +211,9 @@ function updatePhase(phase, instructions) {
     readyBtn.disabled = false;
     readyBtn.textContent = 'Ready for Next Phase';
     
+    // Reset voting header
+    document.getElementById('voting-header').textContent = 'Vote for who to put in Deep Freeze';
+    
     // If spectator, hide all interactive elements
     if (gameState.isSpectator) {
         readyBtn.classList.add('hidden');
@@ -261,21 +264,28 @@ function updatePhase(phase, instructions) {
         // Clear vote results when entering warp
         gameState.voteResults = [];
         
+        // Check if current player is alive
+        const currentPlayer = gameState.players.find(p => p.id === socket.id);
+        const isPlayerAlive = currentPlayer && currentPlayer.isAlive;
+        
         if (gameState.isSpectator) {
             instructionText.textContent = 'Spectating the warp phase...';
-        } else if (gameState.isEngineer) {
+        } else if (gameState.isEngineer && isPlayerAlive) {
             instructionText.textContent = 'You are the Engineer! Select an alive player to investigate...';
+            document.getElementById('voting-header').textContent = 'Select a player to investigate';
             votingSection.classList.remove('hidden'); // Show for selection
             showEngineerOptions();
-        } else if (gameState.isDoctor) {
+        } else if (gameState.isDoctor && isPlayerAlive) {
             instructionText.textContent = 'You are the Doctor! Select a dead player to investigate...';
+            document.getElementById('voting-header').textContent = 'Select a dead player to investigate';
             votingSection.classList.remove('hidden'); // Show for selection
             showDoctorOptions();
-        } else if (gameState.isGuardian) {
+        } else if (gameState.isGuardian && isPlayerAlive) {
             instructionText.textContent = 'You are the Guardian! Select a player to protect...';
+            document.getElementById('voting-header').textContent = 'Select a player to protect';
             votingSection.classList.remove('hidden'); // Show for selection
             showGuardianOptions();
-        } else if (gameState.isGnosia) {
+        } else if (gameState.isGnosia && isPlayerAlive) {
             instructionText.textContent = 'Select a crew member to eliminate during the warp...';
         } else {
             instructionText.textContent = 'The ship is warping. Gnosia are selecting their target...';
@@ -626,7 +636,7 @@ socket.on('voteSubmitted', ({ voterCount, totalPlayers }) => {
 socket.on('votingComplete', ({ eliminatedPlayer, voteResults, players }) => {
     gameState.players = players;
     gameState.voteResults = voteResults; // Store vote results
-    showNotification(`${eliminatedPlayer.name} frozen! (Role: ${eliminatedPlayer.role})`);
+    showNotification(`${eliminatedPlayer.name} was frozen!`);
     // Don't update player list here - wait for phaseChange to warp
 });
 
