@@ -1,0 +1,344 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.screen {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.screen.hidden {
+    display: none;
+}
+
+.container {
+    background: rgba(26, 31, 58, 0.8);
+    border: 2px solid #3a4570;
+    border-radius: 12px;
+    padding: 40px;
+    max-width: 500px;
+    width: 100%;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.title {
+    font-size: 3rem;
+    text-align: center;
+    margin-bottom: 10px;
+    color: #ff6b6b;
+    text-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
+    letter-spacing: 8px;
+}
+
+.subtitle {
+    text-align: center;
+    margin-bottom: 40px;
+    color: #a0a0a0;
+}
+
+.button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.btn {
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+}
+
+.btn-primary {
+    background: #ff6b6b;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #ff5252;
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+}
+
+.btn-secondary {
+    background: #4a5580;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #3a4570;
+}
+
+.btn-small {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+}
+
+input[type="text"] {
+    width: 100%;
+    padding: 15px;
+    margin-bottom: 15px;
+    background: rgba(58, 69, 112, 0.5);
+    border: 2px solid #4a5580;
+    border-radius: 8px;
+    color: white;
+    font-size: 1rem;
+}
+
+input[type="text"]:focus {
+    outline: none;
+    border-color: #ff6b6b;
+}
+
+.room-code-display {
+    background: rgba(255, 107, 107, 0.2);
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 1.2rem;
+}
+
+.player-list {
+    background: rgba(58, 69, 112, 0.3);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    min-height: 150px;
+}
+
+.player-item {
+    padding: 10px;
+    margin-bottom: 8px;
+    background: rgba(74, 85, 128, 0.5);
+    border-radius: 6px;
+}
+
+.player-item.dead {
+    opacity: 0.5;
+    text-decoration: line-through;
+}
+
+.info-box {
+    background: rgba(74, 85, 128, 0.3);
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 20px;
+    font-size: 0.9rem;
+}
+
+/* Game Screen */
+.game-container {
+    background: rgba(26, 31, 58, 0.95);
+    border: 2px solid #3a4570;
+    border-radius: 12px;
+    padding: 30px;
+    max-width: 900px;
+    width: 100%;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #3a4570;
+}
+
+.phase-indicator {
+    background: #ff6b6b;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.role-display {
+    background: rgba(255, 107, 107, 0.2);
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 1.2rem;
+}
+
+.role-display.gnosia {
+    background: rgba(255, 50, 50, 0.3);
+    border: 2px solid #ff3232;
+}
+
+.phase-instructions {
+    background: rgba(74, 85, 128, 0.3);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.players-section {
+    margin-bottom: 20px;
+}
+
+.game-player-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.voting-section, .gnosia-section {
+    margin-bottom: 20px;
+}
+
+.vote-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+}
+
+.vote-btn {
+    padding: 12px;
+    background: #4a5580;
+    border: 2px solid #3a4570;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.vote-btn:hover {
+    background: #3a4570;
+    border-color: #ff6b6b;
+}
+
+.vote-btn.selected {
+    background: #ff6b6b;
+    border-color: #ff5252;
+}
+
+/* Chat */
+.chat-section {
+    margin-top: 20px;
+    border-top: 2px solid #3a4570;
+    padding-top: 20px;
+}
+
+.chat-messages {
+    height: 150px;
+    overflow-y: auto;
+    background: rgba(58, 69, 112, 0.3);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+}
+
+.chat-message {
+    margin-bottom: 8px;
+    padding: 8px;
+    background: rgba(74, 85, 128, 0.5);
+    border-radius: 6px;
+    word-wrap: break-word;
+}
+
+.chat-message .sender {
+    font-weight: 600;
+    color: #ff6b6b;
+}
+
+.chat-input-container {
+    display: flex;
+    gap: 10px;
+}
+
+.chat-input-container input {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+/* Game Over */
+.final-results {
+    background: rgba(58, 69, 112, 0.3);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.result-player {
+    padding: 10px;
+    margin-bottom: 8px;
+    background: rgba(74, 85, 128, 0.5);
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.result-player.gnosia {
+    border-left: 4px solid #ff3232;
+}
+
+/* Notification Toast */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #ff6b6b;
+    color: white;
+    padding: 15px 25px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    animation: slideIn 0.3s ease;
+}
+
+.notification.hidden {
+    display: none;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(58, 69, 112, 0.3);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #4a5580;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #3a4570;
+}

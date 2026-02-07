@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gnosia - Social Deduction Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Landing Screen -->
+        <div id="landing-screen" class="screen">
+            <div class="container">
+                <h1 class="title">GNOSIA</h1>
+                <p class="subtitle">A Space Station Social Deduction Game</p>
+                <div class="button-group">
+                    <button id="create-room-btn" class="btn btn-primary">Create Room</button>
+                    <button id="join-room-btn" class="btn btn-secondary">Join Room</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create/Join Screen -->
+        <div id="room-screen" class="screen hidden">
+            <div class="container">
+                <h2 id="room-title">Create Room</h2>
+                <input type="text" id="player-name-input" placeholder="Enter your name" maxlength="20" />
+                <input type="text" id="room-code-input" class="hidden" placeholder="Enter room code" maxlength="6" />
+                <button id="submit-room-btn" class="btn btn-primary">Create</button>
+                <button id="back-btn" class="btn btn-secondary">Back</button>
+            </div>
+        </div>
+
+        <!-- Lobby Screen -->
+        <div id="lobby-screen" class="screen hidden">
+            <div class="container">
+                <h2>Lobby</h2>
+                <div class="room-code-display">
+                    <span>Room Code: <strong id="display-room-code"></strong></span>
+                </div>
+                <div id="player-list" class="player-list"></div>
+                <button id="start-game-btn" class="btn btn-primary hidden">Start Game</button>
+                <div class="info-box">
+                    <p><strong>Game Info:</strong> Need 4-15 players. Use Discord for voice chat during debate phases.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen hidden">
+            <div class="game-container">
+                <!-- Header -->
+                <div class="game-header">
+                    <h2>Round <span id="round-number">1</span></h2>
+                    <div class="phase-indicator">
+                        <span id="current-phase">Debate Phase</span>
+                    </div>
+                </div>
+
+                <!-- Role Display -->
+                <div id="role-display" class="role-display">
+                    <p>Your Role: <strong id="player-role"></strong></p>
+                </div>
+
+                <!-- Phase Instructions -->
+                <div id="phase-instructions" class="phase-instructions">
+                    <p id="instruction-text">Discuss with other players who you think is Gnosia.</p>
+                </div>
+
+                <!-- Player List -->
+                <div class="players-section">
+                    <h3>Crew Status</h3>
+                    <div id="game-player-list" class="game-player-list"></div>
+                </div>
+
+                <!-- Voting Section -->
+                <div id="voting-section" class="voting-section hidden">
+                    <h3>Vote for who to put in Deep Freeze</h3>
+                    <div id="vote-options" class="vote-options"></div>
+                </div>
+
+                <!-- Gnosia Elimination Section -->
+                <div id="gnosia-section" class="gnosia-section hidden">
+                    <h3>Choose a crew member to eliminate</h3>
+                    <div id="elimination-options" class="vote-options"></div>
+                </div>
+
+                <!-- Ready Button -->
+                <button id="ready-btn" class="btn btn-primary">Ready for Next Phase</button>
+
+                <!-- Chat -->
+                <div class="chat-section">
+                    <div id="chat-messages" class="chat-messages"></div>
+                    <div class="chat-input-container">
+                        <input type="text" id="chat-input" placeholder="Type message..." />
+                        <button id="send-chat-btn" class="btn btn-small">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameover-screen" class="screen hidden">
+            <div class="container">
+                <h2 id="winner-text">Game Over</h2>
+                <div id="final-results" class="final-results"></div>
+                <button id="return-lobby-btn" class="btn btn-primary">Return to Main Menu</button>
+            </div>
+        </div>
+
+        <!-- Notification Toast -->
+        <div id="notification" class="notification hidden"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
