@@ -186,8 +186,16 @@ io.on('connection', (socket) => {
   socket.on('gnosiaEliminate', ({ roomCode, targetPlayerId }) => {
     const result = gameManager.gnosiaEliminate(roomCode, socket.id, targetPlayerId);
     if (result.success) {
-      // Just confirm selection, don't end phase yet
+      // Confirm selection
       socket.emit('actionConfirmed', { message: 'Target selected. Waiting for other actions...' });
+      
+      // Check if all actions complete
+      if (result.allComplete) {
+        const warpResult = gameManager.completeWarpPhase(roomCode);
+        if (warpResult.success) {
+          handleWarpPhaseEnd(io, roomCode, warpResult);
+        }
+      }
     } else {
       socket.emit('error', { message: result.error });
     }

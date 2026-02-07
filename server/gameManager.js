@@ -336,12 +336,14 @@ function gnosiaEliminate(roomCode, gnosiaId, targetPlayerId) {
   // Mark that Gnosia elimination action has been taken
   game.warpActions.gnosiaElimination = targetPlayerId;
 
-  // Don't end phase immediately - let helper roles complete their actions
-  // Just confirm the selection
+  // Check if all actions complete
+  const allComplete = checkWarpActionsComplete(game);
+
   return {
     success: true,
-    waiting: true,
-    targetPlayerId
+    waiting: !allComplete,
+    targetPlayerId,
+    allComplete
   };
 }
 
