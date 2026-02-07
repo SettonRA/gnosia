@@ -80,12 +80,11 @@ io.on('connection', (socket) => {
       
       // Send role assignments privately to each player
       result.roleAssignments.forEach(({ socketId, role, isGnosia }) => {
-        const roleData = { role, isGnosia };
-        
-        // If this player is Gnosia, send them the list of other Gnosia
-        if (isGnosia) {
-          roleData.gnosiaPlayers = gnosiaPlayers;
-        }
+        const roleData = { 
+          role, 
+          isGnosia,
+          gnosiaPlayers // Send to all players for the count display
+        };
         
         io.to(socketId).emit('roleAssigned', roleData);
       });

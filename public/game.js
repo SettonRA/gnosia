@@ -13,7 +13,8 @@ let gameState = {
     selectedVote: null,
     voteResults: [],
     isSpectator: false,
-    gnosiaPlayerIds: []
+    gnosiaPlayerIds: [],
+    totalGnosiaCount: 0
 };
 
 // DOM Elements
@@ -413,6 +414,10 @@ socket.on('roleAssigned', ({ role, isGnosia, gnosiaPlayers }) => {
         // Store Gnosia player IDs for filtering
         if (gnosiaPlayers) {
             gameState.gnosiaPlayerIds = gnosiaPlayers.map(p => p.id);
+            gameState.totalGnosiaCount = gnosiaPlayers.length;
+            
+            // Update the Gnosia count display
+            document.getElementById('gnosia-count').textContent = gameState.totalGnosiaCount;
             
             // Show other Gnosia to this player
             const gnosiaNames = gnosiaPlayers
@@ -423,6 +428,12 @@ socket.on('roleAssigned', ({ role, isGnosia, gnosiaPlayers }) => {
             if (gnosiaNames) {
                 showNotification(`Your fellow Gnosia: ${gnosiaNames}`);
             }
+        }
+    } else {
+        // For crew members, store the total count
+        if (gnosiaPlayers) {
+            gameState.totalGnosiaCount = gnosiaPlayers.length;
+            document.getElementById('gnosia-count').textContent = gameState.totalGnosiaCount;
         }
     }
 });
