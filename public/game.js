@@ -132,7 +132,11 @@ function updatePlayerList(players, gameStarted = false) {
 function updateGamePlayerList(players) {
     const container = document.getElementById('game-player-list');
     container.innerHTML = '';
-    players.forEach(player => {
+    
+    // Sort players alphabetically by name
+    const sortedPlayers = [...players].sort((a, b) => a.name.localeCompare(b.name));
+    
+    sortedPlayers.forEach(player => {
         const playerEl = document.createElement('div');
         playerEl.className = 'player-item';
         if (!player.isAlive) {
@@ -253,17 +257,19 @@ function updatePhase(phase, instructions) {
 function showVoteOptions() {
     const container = document.getElementById('vote-options');
     container.innerHTML = '';
-    gameState.players.forEach(player => {
-        // Don't show self, dead players, or other Gnosia (if you're Gnosia)
+    
+    // Filter and sort eligible players alphabetically
+    const eligiblePlayers = gameState.players.filter(player => {
         const isOtherGnosia = gameState.isGnosia && gameState.gnosiaPlayerIds && gameState.gnosiaPlayerIds.includes(player.id);
-        
-        if (player.isAlive && player.id !== socket.id && !isOtherGnosia) {
-            const btn = document.createElement('button');
-            btn.className = 'vote-btn';
-            btn.textContent = player.name;
-            btn.onclick = () => submitVote(player.id, btn);
-            container.appendChild(btn);
-        }
+        return player.isAlive && player.id !== socket.id && !isOtherGnosia;
+    }).sort((a, b) => a.name.localeCompare(b.name));
+    
+    eligiblePlayers.forEach(player => {
+        const btn = document.createElement('button');
+        btn.className = 'vote-btn';
+        btn.textContent = player.name;
+        btn.onclick = () => submitVote(player.id, btn);
+        container.appendChild(btn);
     });
 }
 
