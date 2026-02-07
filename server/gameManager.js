@@ -561,6 +561,11 @@ function guardianProtect(roomCode, guardianId, targetPlayerId) {
     return { success: false, error: 'Target must be alive' };
   }
 
+  // Guardian cannot protect themselves
+  if (targetPlayerId === guardianId) {
+    return { success: false, error: 'Guardian cannot protect themselves' };
+  }
+
   // Store protected player
   game.warpActions.guardianProtection = targetPlayerId;
   

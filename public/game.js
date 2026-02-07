@@ -416,9 +416,9 @@ function showGuardianOptions() {
     const container = document.getElementById('vote-options');
     container.innerHTML = '';
     
-    // Show all alive players for protection
+    // Show all alive players except the Guardian themselves
     const alivePlayers = gameState.players.filter(player => 
-        player.isAlive
+        player.isAlive && player.id !== socket.id
     ).sort((a, b) => a.name.localeCompare(b.name));
     
     alivePlayers.forEach(player => {
