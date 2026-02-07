@@ -7,7 +7,7 @@ const ROLES = {
   GNOSIA: 'Gnosia',
   ENGINEER: 'Engineer',
   DOCTOR: 'Doctor',
-  GUARD: 'Guard'
+  GUARDIAN: 'Guardian'
 };
 
 function generateRoomCode() {
@@ -32,7 +32,19 @@ function createRoom(socketId, playerName, isPublic = false) {
     votes: new Map(),
     started: false,
     isPublic: isPublic,
-    gnosiaEliminationTurnIndex: 0
+    gnosiaEliminationTurnIndex: 0,
+    helperRoles: {
+      engineer: null,
+      doctor: null,
+      guardian: null
+    },
+    warpActions: {
+      engineerInvestigation: null,
+      doctorInvestigation: null,
+      guardianProtection: null,
+      gnosiaElimination: null
+    },
+    investigations: new Map() // Store investigation results per player
   });
   return roomCode;
 }
@@ -114,21 +126,70 @@ function startGame(roomCode, requesterId) {
   // Shuffle players
   const shuffled = playerArray.sort(() => Math.random() - 0.5);
   
-  // Assign Gnosia
+  // Assign Gnosia first
   const roleAssignments = [];
+  const gnosiaPlayers = [];
+  const crewPlayers = [];
+  
   for (let i = 0; i < shuffled.length; i++) {
     const player = shuffled[i];
     const isGnosia = i < gnosiaCount;
     player.isGnosia = isGnosia;
-    player.role = isGnosia ? ROLES.GNOSIA : ROLES.CREW;
     player.isAlive = true;
     
+    if (isGnosia) {
+      player.role = ROLES.GNOSIA;
+      gnosiaPlayers.push(player);
+    } else {
+      crewPlayers.push(player);
+    }
+  }
+  
+  // Assign helper roles to crew members (equal to number of Gnosia)
+  const helperRoleCount = gnosiaCount;
+  const availableHelperRoles = [ROLES.ENGINEER, ROLES.GUARDIAN];
+  
+  // Only include Doctor if there are 2+ Gnosia
+  if (gnosiaCount >= 2) {
+    availableHelperRoles.push(ROLES.DOCTOR);
+  }
+  
+  // Shuffle crew members for random helper role assignment
+  const shuffledCrew = crewPlayers.sort(() => Math.random() - 0.5);
+  
+  // Assign helper roles
+  let helperRoleIndex = 0;
+  for (let i = 0; i < shuffledCrew.length; i++) {
+    if (i < helperRoleCount && availableHelperRoles.length > 0) {
+      // Assign a helper role
+      const roleIndex = helperRoleIndex % availableHelperRoles.length;
+      const helperRole = availableHelperRoles[roleIndex];
+      shuffledCrew[i].role = helperRole;
+      
+      // Store helper role player IDs
+      if (helperRole === ROLES.ENGINEER) {
+        game.helperRoles.engineer = shuffledCrew[i].id;
+      } else if (helperRole === ROLES.DOCTOR) {
+        game.helperRoles.doctor = shuffledCrew[i].id;
+      } else if (helperRole === ROLES.GUARDIAN) {
+        game.helperRoles.guardian = shuffledCrew[i].id;
+      }
+      
+      helperRoleIndex++;
+    } else {
+      // Regular crew member
+      shuffledCrew[i].role = ROLES.CREW;
+    }
+  }
+  
+  // Create role assignments array
+  playerArray.forEach(player => {
     roleAssignments.push({
       socketId: player.id,
       role: player.role,
       isGnosia: player.isGnosia
     });
-  }
+  });
 
   game.started = true;
   game.phase = 'debate';
@@ -143,10 +204,19 @@ function startGame(roomCode, requesterId) {
   game.gnosiaTurnOrder = [...gnosiaPlayerIds];
   game.gnosiaEliminationTurnIndex = 0;
 
+  // Count helper roles
+  const helperRoleCounts = {
+    engineer: game.helperRoles.engineer ? 1 : 0,
+    doctor: game.helperRoles.doctor ? 1 : 0,
+    guardian: game.helperRoles.guardian ? 1 : 0
+  };
+
   return {
     success: true,
     roleAssignments,
     gnosiaPlayerIds,
+    helperRoles: game.helperRoles,
+    helperRoleCounts,
     players: playerArray.map(p => ({
       id: p.id,
       name: p.name,
@@ -260,7 +330,29 @@ function gnosiaEliminate(roomCode, gnosiaId, targetPlayerId) {
     return { success: false, error: 'Invalid target' };
   }
 
-  target.isAlive = false;
+  // Mark that Gnosia elimination action has been taken
+  game.warpActions.gnosiaElimination = targetPlayerId;
+
+  // Check if Guardian protected this player
+  const wasProtected = game.warpActions.guardianProtection === targetPlayerId;
+  
+  let eliminatedPlayer = null;
+  if (!wasProtected) {
+    target.isAlive = false;
+    eliminatedPlayer = {
+      id: target.id,
+      name: target.name
+    };
+  }
+
+  // Reset warp actions for next round
+  game.warpActions = {
+    engineerInvestigation: false,
+    doctorInvestigation: false,
+    guardianProtection: null,
+    gnosiaElimination: null
+  };
+
   game.round++;
   game.phase = 'debate';
   
@@ -274,10 +366,8 @@ function gnosiaEliminate(roomCode, gnosiaId, targetPlayerId) {
 
   return {
     success: true,
-    eliminatedPlayer: {
-      id: target.id,
-      name: target.name
-    },
+    eliminatedPlayer,
+    wasProtected,
     players: Array.from(game.players.values()).map(p => ({
       id: p.id,
       name: p.name,
@@ -287,6 +377,121 @@ function gnosiaEliminate(roomCode, gnosiaId, targetPlayerId) {
     gameOver,
     winner,
     finalState: gameOver ? getGameState(game) : null
+  };
+}
+
+function engineerInvestigate(roomCode, engineerId, targetPlayerId) {
+  const game = games.get(roomCode);
+  if (!game) {
+    return { success: false, error: 'Room not found' };
+  }
+  if (game.phase !== 'warp') {
+    return { success: false, error: 'Not in warp phase' };
+  }
+
+  // Verify Engineer
+  if (game.helperRoles.engineer !== engineerId) {
+    return { success: false, error: 'You are not the Engineer' };
+  }
+
+  const engineer = game.players.get(engineerId);
+  if (!engineer || !engineer.isAlive) {
+    return { success: false, error: 'Engineer must be alive' };
+  }
+
+  const target = game.players.get(targetPlayerId);
+  if (!target || !target.isAlive) {
+    return { success: false, error: 'Target must be alive' };
+  }
+
+  // Store investigation result
+  const result = target.isGnosia ? 'Gnosia' : 'Human';
+  if (!game.investigations.has(engineerId)) {
+    game.investigations.set(engineerId, new Map());
+  }
+  game.investigations.get(engineerId).set(targetPlayerId, result);
+  
+  // Mark action as completed
+  game.warpActions.engineerInvestigation = true;
+
+  return {
+    success: true,
+    targetName: target.name,
+    result
+  };
+}
+
+function doctorInvestigate(roomCode, doctorId, targetPlayerId) {
+  const game = games.get(roomCode);
+  if (!game) {
+    return { success: false, error: 'Room not found' };
+  }
+  if (game.phase !== 'warp') {
+    return { success: false, error: 'Not in warp phase' };
+  }
+
+  // Verify Doctor
+  if (game.helperRoles.doctor !== doctorId) {
+    return { success: false, error: 'You are not the Doctor' };
+  }
+
+  const doctor = game.players.get(doctorId);
+  if (!doctor || !doctor.isAlive) {
+    return { success: false, error: 'Doctor must be alive' };
+  }
+
+  const target = game.players.get(targetPlayerId);
+  if (!target || target.isAlive) {
+    return { success: false, error: 'Target must be dead' };
+  }
+
+  // Store investigation result
+  const result = target.isGnosia ? 'Gnosia' : 'Human';
+  if (!game.investigations.has(doctorId)) {
+    game.investigations.set(doctorId, new Map());
+  }
+  game.investigations.get(doctorId).set(targetPlayerId, result);
+  
+  // Mark action as completed
+  game.warpActions.doctorInvestigation = true;
+
+  return {
+    success: true,
+    targetName: target.name,
+    result
+  };
+}
+
+function guardianProtect(roomCode, guardianId, targetPlayerId) {
+  const game = games.get(roomCode);
+  if (!game) {
+    return { success: false, error: 'Room not found' };
+  }
+  if (game.phase !== 'warp') {
+    return { success: false, error: 'Not in warp phase' };
+  }
+
+  // Verify Guardian
+  if (game.helperRoles.guardian !== guardianId) {
+    return { success: false, error: 'You are not the Guardian' };
+  }
+
+  const guardian = game.players.get(guardianId);
+  if (!guardian || !guardian.isAlive) {
+    return { success: false, error: 'Guardian must be alive' };
+  }
+
+  const target = game.players.get(targetPlayerId);
+  if (!target || !target.isAlive) {
+    return { success: false, error: 'Target must be alive' };
+  }
+
+  // Store protected player
+  game.warpActions.guardianProtection = targetPlayerId;
+
+  return {
+    success: true,
+    targetName: target.name
   };
 }
 
@@ -497,6 +702,9 @@ module.exports = {
   startGame,
   submitVote,
   gnosiaEliminate,
+  engineerInvestigate,
+  doctorInvestigate,
+  guardianProtect,
   updatePhase,
   getWarpInfo,
   markPlayerReady,

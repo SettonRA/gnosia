@@ -14,7 +14,11 @@ let gameState = {
     voteResults: [],
     isSpectator: false,
     gnosiaPlayerIds: [],
-    totalGnosiaCount: 0
+    totalGnosiaCount: 0,
+    isEngineer: false,
+    isDoctor: false,
+    isGuardian: false,
+    investigations: new Map()
 };
 
 // DOM Elements
@@ -160,8 +164,16 @@ function updateGamePlayerList(players) {
         const isOtherGnosia = gameState.isGnosia && gameState.gnosiaPlayerIds && gameState.gnosiaPlayerIds.includes(player.id);
         const gnosiaLabel = isOtherGnosia ? ' <span style="color: #ff6b6b; font-weight: bold;">[Gnosia]</span>' : '';
         
+        // Show investigation result if this player was investigated by current player
+        let investigationLabel = '';
+        if (gameState.investigations && gameState.investigations.has(player.id)) {
+            const result = gameState.investigations.get(player.id);
+            const color = result === 'Human' ? '#4ade80' : '#ff6b6b';
+            investigationLabel = ` <span style="color: ${color}; font-weight: bold;">(${result})</span>`;
+        }
+        
         playerEl.innerHTML = `
-            <strong>${player.name}${voteCount}${gnosiaLabel}</strong>
+            <strong>${player.name}${voteCount}${gnosiaLabel}${investigationLabel}</strong>
             ${player.isAlive ? '<span style="color: #4ade80;">● Alive</span>' : '<span style="color: #f87171;">● Frozen/Dead</span>'}
         `;
         container.appendChild(playerEl);
@@ -249,6 +261,15 @@ function updatePhase(phase, instructions) {
             instructionText.textContent = 'Spectating the warp phase...';
         } else if (gameState.isGnosia) {
             instructionText.textContent = 'Select a crew member to eliminate during the warp...';
+        } else if (gameState.isEngineer) {
+            instructionText.textContent = 'You are the Engineer! Select an alive player to investigate...';
+            showEngineerOptions();
+        } else if (gameState.isDoctor) {
+            instructionText.textContent = 'You are the Doctor! Select a dead player to investigate...';
+            showDoctorOptions();
+        } else if (gameState.isGuardian) {
+            instructionText.textContent = 'You are the Guardian! Select a player to protect...';
+            showGuardianOptions();
         } else {
             instructionText.textContent = 'The ship is warping. Gnosia are selecting their target...';
         }
@@ -318,6 +339,83 @@ function showGnosiaEliminationOptions(alivePlayers) {
             };
             container.appendChild(btn);
         }
+    });
+}
+
+function showEngineerOptions() {
+    const container = document.getElementById('vote-options');
+    container.innerHTML = '';
+    
+    // Show alive players for investigation
+    const alivePlayers = gameState.players.filter(player => 
+        player.isAlive && player.id !== socket.id
+    ).sort((a, b) => a.name.localeCompare(b.name));
+    
+    alivePlayers.forEach(player => {
+        const btn = document.createElement('button');
+        btn.className = 'vote-btn';
+        btn.textContent = player.name;
+        btn.onclick = () => {
+            socket.emit('engineerInvestigate', { 
+                roomCode: gameState.roomCode, 
+                targetPlayerId: player.id 
+            });
+            container.innerHTML = '<p style="color: #10b981;">Investigation sent. Waiting for results...</p>';
+        };
+        container.appendChild(btn);
+    });
+}
+
+function showDoctorOptions() {
+    const container = document.getElementById('vote-options');
+    container.innerHTML = '';
+    
+    // Show dead players for investigation
+    const deadPlayers = gameState.players.filter(player => 
+        !player.isAlive
+    ).sort((a, b) => a.name.localeCompare(b.name));
+    
+    if (deadPlayers.length === 0) {
+        container.innerHTML = '<p style="color: #9ca3af;">No dead players to investigate yet.</p>';
+        return;
+    }
+    
+    deadPlayers.forEach(player => {
+        const btn = document.createElement('button');
+        btn.className = 'vote-btn';
+        btn.textContent = player.name;
+        btn.onclick = () => {
+            socket.emit('doctorInvestigate', { 
+                roomCode: gameState.roomCode, 
+                targetPlayerId: player.id 
+            });
+            container.innerHTML = '<p style="color: #10b981;">Investigation sent. Waiting for results...</p>';
+        };
+        container.appendChild(btn);
+    });
+}
+
+function showGuardianOptions() {
+    const container = document.getElementById('vote-options');
+    container.innerHTML = '';
+    
+    // Show all alive players for protection
+    const alivePlayers = gameState.players.filter(player => 
+        player.isAlive
+    ).sort((a, b) => a.name.localeCompare(b.name));
+    
+    alivePlayers.forEach(player => {
+        const btn = document.createElement('button');
+        btn.className = 'vote-btn';
+        btn.textContent = player.name;
+        btn.onclick = () => {
+            socket.emit('guardianProtect', { 
+                roomCode: gameState.roomCode, 
+                targetPlayerId: player.id 
+            });
+            container.innerHTML = '<p style="color: #10b981;">Protection confirmed for ' + player.name + '</p>';
+        };
+        container.appendChild(btn);
     });
 }
 
@@ -402,10 +500,15 @@ socket.on('playerJoined', ({ players, message }) => {
     showNotification(message);
 });
 
-socket.on('roleAssigned', ({ role, isGnosia, gnosiaPlayers }) => {
+socket.on('roleAssigned', ({ role, isGnosia, gnosiaPlayers, helperRoleCounts, isEngineer, isDoctor, isGuardian }) => {
     gameState.role = role;
     gameState.isGnosia = isGnosia;
     gameState.isSpectator = false; // No longer a spectator once role is assigned
+    gameState.isEngineer = isEngineer || false;
+    gameState.isDoctor = isDoctor || false;
+    gameState.isGuardian = isGuardian || false;
+    gameState.investigations = new Map(); // Store investigation results
+    
     document.getElementById('player-role').textContent = role;
     const roleDisplay = document.getElementById('role-display');
     if (isGnosia) {
@@ -434,6 +537,31 @@ socket.on('roleAssigned', ({ role, isGnosia, gnosiaPlayers }) => {
         if (gnosiaPlayers) {
             gameState.totalGnosiaCount = gnosiaPlayers.length;
             document.getElementById('gnosia-count').textContent = gameState.totalGnosiaCount;
+        }
+        
+        // Show helper role notification
+        if (isEngineer) {
+            showNotification('You are the Engineer! During warp phase, you can investigate alive players.');
+        } else if (isDoctor) {
+            showNotification('You are the Doctor! During warp phase, you can investigate dead players.');
+        } else if (isGuardian) {
+            showNotification('You are the Guardian! During warp phase, you can protect a player from elimination.');
+        }
+    }
+    
+    // Update helper role counts in Active Roles
+    if (helperRoleCounts) {
+        if (helperRoleCounts.engineer > 0) {
+            document.getElementById('engineer-count').textContent = helperRoleCounts.engineer;
+            document.getElementById('engineer-count').parentElement.style.display = 'flex';
+        }
+        if (helperRoleCounts.doctor > 0) {
+            document.getElementById('doctor-count').textContent = helperRoleCounts.doctor;
+            document.getElementById('doctor-count').parentElement.style.display = 'flex';
+        }
+        if (helperRoleCounts.guardian > 0) {
+            document.getElementById('guardian-count').textContent = helperRoleCounts.guardian;
+            document.getElementById('guardian-count').parentElement.style.display = 'flex';
         }
     }
 });
@@ -499,6 +627,27 @@ socket.on('playerEliminated', ({ eliminatedPlayer, round, players }) => {
     updateGamePlayerList(players);
     showNotification(`${eliminatedPlayer.name} was eliminated by the Gnosia!`);
     document.getElementById('round-number').textContent = round;
+});
+
+socket.on('playerProtected', ({ round, players }) => {
+    gameState.players = players;
+    updateGamePlayerList(players);
+    showNotification('The Guardian protected someone! No one was eliminated.');
+    document.getElementById('round-number').textContent = round;
+});
+
+socket.on('investigationResult', ({ targetId, targetName, result }) => {
+    // Store the investigation result
+    gameState.investigations.set(targetId, result);
+    
+    // Update the player list to show the investigation
+    updateGamePlayerList(gameState.players);
+    
+    showNotification(`Investigation complete: ${targetName} is ${result}!`);
+});
+
+socket.on('protectionConfirmed', ({ targetId, targetName }) => {
+    showNotification(`Protection set for ${targetName}`);
 });
 
 socket.on('gnosiaEliminationPhase', ({ alivePlayers }) => {

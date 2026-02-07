@@ -83,7 +83,11 @@ io.on('connection', (socket) => {
         const roleData = { 
           role, 
           isGnosia,
-          gnosiaPlayers // Send to all players for the count display
+          gnosiaPlayers, // Send to all players for the count display
+          helperRoleCounts: result.helperRoleCounts,
+          isEngineer: result.helperRoles.engineer === socketId,
+          isDoctor: result.helperRoles.doctor === socketId,
+          isGuardian: result.helperRoles.guardian === socketId
         };
         
         io.to(socketId).emit('roleAssigned', roleData);
@@ -150,11 +154,20 @@ io.on('connection', (socket) => {
   socket.on('gnosiaEliminate', ({ roomCode, targetPlayerId }) => {
     const result = gameManager.gnosiaEliminate(roomCode, socket.id, targetPlayerId);
     if (result.success) {
-      io.to(roomCode).emit('playerEliminated', {
-        eliminatedPlayer: result.eliminatedPlayer,
-        round: result.round,
-        players: result.players
-      });
+      if (result.wasProtected) {
+        // Player was protected by Guardian
+        io.to(roomCode).emit('playerProtected', {
+          round: result.round,
+          players: result.players
+        });
+      } else {
+        // Player was eliminated
+        io.to(roomCode).emit('playerEliminated', {
+          eliminatedPlayer: result.eliminatedPlayer,
+          round: result.round,
+          players: result.players
+        });
+      }
 
       // Check for game end
       if (result.gameOver) {
@@ -170,6 +183,47 @@ io.on('connection', (socket) => {
           round: result.round
         });
       }
+    } else {
+      socket.emit('error', { message: result.error });
+    }
+  });
+
+  // Engineer investigate
+  socket.on('engineerInvestigate', ({ roomCode, targetPlayerId }) => {
+    const result = gameManager.engineerInvestigate(roomCode, socket.id, targetPlayerId);
+    if (result.success) {
+      socket.emit('investigationResult', {
+        targetId: targetPlayerId,
+        targetName: result.targetName,
+        result: result.result
+      });
+    } else {
+      socket.emit('error', { message: result.error });
+    }
+  });
+
+  // Doctor investigate
+  socket.on('doctorInvestigate', ({ roomCode, targetPlayerId }) => {
+    const result = gameManager.doctorInvestigate(roomCode, socket.id, targetPlayerId);
+    if (result.success) {
+      socket.emit('investigationResult', {
+        targetId: targetPlayerId,
+        targetName: result.targetName,
+        result: result.result
+      });
+    } else {
+      socket.emit('error', { message: result.error });
+    }
+  });
+
+  // Guardian protect
+  socket.on('guardianProtect', ({ roomCode, targetPlayerId }) => {
+    const result = gameManager.guardianProtect(roomCode, socket.id, targetPlayerId);
+    if (result.success) {
+      socket.emit('protectionConfirmed', {
+        targetId: targetPlayerId,
+        targetName: result.targetName
+      });
     } else {
       socket.emit('error', { message: result.error });
     }
