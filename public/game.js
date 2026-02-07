@@ -152,8 +152,9 @@ function updatePhase(phase, instructions) {
         showVoteOptions();
     } else if (phase === 'warp') {
         phaseText.textContent = 'Warp Phase';
+        readyBtn.classList.add('hidden'); // Hide ready button during warp
         if (gameState.isGnosia) {
-            instructionText.textContent = 'Waiting for Gnosia to eliminate someone...';
+            instructionText.textContent = 'Select a crew member to eliminate during the warp...';
         } else {
             instructionText.textContent = 'The ship is warping. Gnosia are selecting their target...';
         }

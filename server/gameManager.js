@@ -268,6 +268,23 @@ function getGameState(game) {
   };
 }
 
+function getWarpInfo(roomCode) {
+  const game = games.get(roomCode);
+  if (!game) {
+    return { gnosiaPlayers: [], alivePlayers: [] };
+  }
+  
+  const alivePlayers = Array.from(game.players.values()).filter(p => p.isAlive);
+  
+  return {
+    gnosiaPlayers: alivePlayers.filter(p => p.isGnosia).map(p => p.id),
+    alivePlayers: alivePlayers.map(p => ({
+      id: p.id,
+      name: p.name
+    }))
+  };
+}
+
 function updatePhase(roomCode, phase) {
   const game = games.get(roomCode);
   if (!game) {
@@ -347,6 +364,7 @@ module.exports = {
   submitVote,
   gnosiaEliminate,
   updatePhase,
+  getWarpInfo,
   markPlayerReady,
   handleDisconnect,
   getGamesCount

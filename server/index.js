@@ -96,7 +96,19 @@ io.on('connection', (socket) => {
         } else {
           // Move to warp phase
           gameManager.updatePhase(roomCode, 'warp');
+          
+          // Get Gnosia players and alive players
+          const warpInfo = gameManager.getWarpInfo(roomCode);
+          
+          // Send phase change to all
           io.to(roomCode).emit('phaseChange', { phase: 'warp' });
+          
+          // Immediately send elimination phase to Gnosia
+          warpInfo.gnosiaPlayers.forEach(playerId => {
+            io.to(playerId).emit('gnosiaEliminationPhase', {
+              alivePlayers: warpInfo.alivePlayers
+            });
+          });
         }
       }
     } else {
@@ -137,15 +149,7 @@ io.on('connection', (socket) => {
   socket.on('readyForNextPhase', ({ roomCode, phase }) => {
     const result = gameManager.markPlayerReady(roomCode, socket.id);
     if (result.success && result.allReady) {
-      if (phase === 'warp') {
-        // Send warp complete to Gnosia players
-        const gnosiaPlayers = result.gnosiaPlayers;
-        gnosiaPlayers.forEach(playerId => {
-          io.to(playerId).emit('gnosiaEliminationPhase', {
-            alivePlayers: result.alivePlayers
-          });
-        });
-      } else if (phase === 'debate') {
+      if (phase === 'debate') {
         // Move to voting
         const updateResult = gameManager.updatePhase(roomCode, 'voting');
         io.to(roomCode).emit('phaseChange', { 
