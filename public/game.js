@@ -35,15 +35,6 @@ function showNotification(message) {
     setTimeout(() => notif.classList.add('hidden'), 3000);
 }
 
-function addChatMessage(sender, message) {
-    const chatMessages = document.getElementById('chat-messages');
-    const messageEl = document.createElement('div');
-    messageEl.className = 'chat-message';
-    messageEl.innerHTML = `<span class="sender">${sender}:</span> ${message}`;
-    chatMessages.appendChild(messageEl);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
 // Landing Screen
 document.getElementById('create-room-btn').addEventListener('click', () => {
     showScreen('room');
@@ -134,20 +125,6 @@ document.getElementById('ready-btn').addEventListener('click', () => {
     document.getElementById('ready-btn').disabled = true;
     document.getElementById('ready-btn').textContent = 'Waiting for others...';
 });
-
-document.getElementById('send-chat-btn').addEventListener('click', sendChat);
-document.getElementById('chat-input').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendChat();
-});
-
-function sendChat() {
-    const input = document.getElementById('chat-input');
-    const message = input.value.trim();
-    if (message) {
-        socket.emit('chatMessage', { roomCode: gameState.roomCode, message });
-        input.value = '';
-    }
-}
 
 function updatePhase(phase, instructions) {
     gameState.phase = phase;
@@ -289,12 +266,11 @@ socket.on('voteSubmitted', ({ voterCount, totalPlayers }) => {
 });
 
 socket.on('votingComplete', ({ eliminatedPlayer, voteResults }) => {
-    addChatMessage('SYSTEM', `${eliminatedPlayer.name} has been put in Deep Freeze! (Role: ${eliminatedPlayer.role})`);
-    showNotification(`${eliminatedPlayer.name} frozen!`);
+    showNotification(`${eliminatedPlayer.name} frozen! (Role: ${eliminatedPlayer.role})`);
 });
 
 socket.on('playerEliminated', ({ eliminatedPlayer, round }) => {
-    addChatMessage('SYSTEM', `During the warp, ${eliminatedPlayer.name} was eliminated by the Gnosia!`);
+    showNotification(`${eliminatedPlayer.name} was eliminated by the Gnosia!`);
     document.getElementById('round-number').textContent = round;
 });
 
@@ -322,10 +298,6 @@ socket.on('gameOver', ({ winner, finalState }) => {
         `;
         resultsContainer.appendChild(playerEl);
     });
-});
-
-socket.on('chatMessage', ({ playerName, message }) => {
-    addChatMessage(playerName, message);
 });
 
 socket.on('playerDisconnected', ({ playerName }) => {

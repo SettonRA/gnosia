@@ -235,45 +235,6 @@ input[type="text"]:focus {
     border-color: #ff5252;
 }
 
-/* Chat */
-.chat-section {
-    margin-top: 20px;
-    border-top: 2px solid #3a4570;
-    padding-top: 20px;
-}
-
-.chat-messages {
-    height: 150px;
-    overflow-y: auto;
-    background: rgba(58, 69, 112, 0.3);
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 10px;
-}
-
-.chat-message {
-    margin-bottom: 8px;
-    padding: 8px;
-    background: rgba(74, 85, 128, 0.5);
-    border-radius: 6px;
-    word-wrap: break-word;
-}
-
-.chat-message .sender {
-    font-weight: 600;
-    color: #ff6b6b;
-}
-
-.chat-input-container {
-    display: flex;
-    gap: 10px;
-}
-
-.chat-input-container input {
-    flex: 1;
-    margin-bottom: 0;
-}
-
 /* Game Over */
 .final-results {
     background: rgba(58, 69, 112, 0.3);

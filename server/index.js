@@ -151,18 +151,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Chat message
-  socket.on('chatMessage', ({ roomCode, message }) => {
-    const result = gameManager.getChatInfo(roomCode, socket.id);
-    if (result.success) {
-      io.to(roomCode).emit('chatMessage', {
-        playerName: result.playerName,
-        message,
-        timestamp: Date.now()
-      });
-    }
-  });
-
   // Disconnect
   socket.on('disconnect', () => {
     const result = gameManager.handleDisconnect(socket.id);

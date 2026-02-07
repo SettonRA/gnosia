@@ -292,18 +292,6 @@ function markPlayerReady(roomCode, playerId) {
   return { success: true, allReady: false };
 }
 
-function getChatInfo(roomCode, playerId) {
-  const game = games.get(roomCode);
-  if (!game) {
-    return { success: false, error: 'Room not found' };
-  }
-  const player = game.players.get(playerId);
-  if (!player) {
-    return { success: false, error: 'Player not found' };
-  }
-  return { success: true, playerName: player.name };
-}
-
 function handleDisconnect(socketId) {
   for (const [roomCode, game] of games.entries()) {
     if (game.players.has(socketId)) {
@@ -340,7 +328,6 @@ module.exports = {
   submitVote,
   gnosiaEliminate,
   markPlayerReady,
-  getChatInfo,
   handleDisconnect,
   getGamesCount
 };

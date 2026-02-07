@@ -20,9 +20,9 @@ A transport spaceship has just escaped from a planet, but some passengers have b
 - Room-based multiplayer with 6-character room codes
 - Real-time game state synchronization
 - Simple text-based interface
-- In-game text chat (use Discord for voice)
 - Role assignment (Crew/Gnosia)
 - Turn-based gameplay phases
+- Use Discord for voice communication during debate phases
 
 ## Tech Stack
 
