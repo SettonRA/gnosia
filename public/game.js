@@ -152,10 +152,18 @@ function updatePhase(phase, instructions) {
     } else if (phase === 'voting') {
         gameState.selectedVote = null; // Reset vote
         phaseText.textContent = 'Voting Phase';
-        instructionText.textContent = 'Vote for who to put in Deep Freeze.';
-        votingSection.classList.remove('hidden');
-        readyBtn.classList.add('hidden');
-        showVoteOptions();
+        
+        // Check if current player is alive
+        const currentPlayer = gameState.players.find(p => p.id === socket.id);
+        if (currentPlayer && currentPlayer.isAlive) {
+            instructionText.textContent = 'Vote for who to put in Deep Freeze.';
+            votingSection.classList.remove('hidden');
+            readyBtn.classList.add('hidden');
+            showVoteOptions();
+        } else {
+            instructionText.textContent = 'You are eliminated. Watch as others vote...';
+            readyBtn.classList.add('hidden');
+        }
     } else if (phase === 'warp') {
         phaseText.textContent = 'Warp Phase';
         readyBtn.classList.add('hidden'); // Hide ready button during warp
