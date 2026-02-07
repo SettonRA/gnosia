@@ -114,6 +114,9 @@ function updateGamePlayerList(players) {
         if (!player.isAlive) {
             playerEl.classList.add('dead');
         }
+        if (player.ready && player.isAlive) {
+            playerEl.classList.add('ready');
+        }
         playerEl.innerHTML = `
             <strong>${player.name}</strong>
             ${player.isAlive ? '<span style="color: #4ade80;">● Alive</span>' : '<span style="color: #f87171;">● Frozen/Dead</span>'}
@@ -130,6 +133,13 @@ document.getElementById('ready-btn').addEventListener('click', () => {
     });
     document.getElementById('ready-btn').disabled = true;
     document.getElementById('ready-btn').textContent = 'Waiting for others...';
+    
+    // Mark self as ready in local state
+    const currentPlayer = gameState.players.find(p => p.id === socket.id);
+    if (currentPlayer) {
+        currentPlayer.ready = true;
+        updateGamePlayerList(gameState.players);
+    }
 });
 
 function updatePhase(phase, instructions) {
@@ -149,6 +159,13 @@ function updatePhase(phase, instructions) {
     if (phase === 'debate') {
         phaseText.textContent = 'Debate Phase';
         instructionText.textContent = 'Discuss with others on voice chat who you think is Gnosia.';
+        
+        // Check if current player is alive
+        const currentPlayer = gameState.players.find(p => p.id === socket.id);
+        if (currentPlayer && !currentPlayer.isAlive) {
+            readyBtn.classList.add('hidden');
+            instructionText.textContent = 'You are eliminated. Watch as the game continues...';
+        }
     } else if (phase === 'voting') {
         gameState.selectedVote = null; // Reset vote
         phaseText.textContent = 'Voting Phase';
@@ -288,7 +305,18 @@ socket.on('phaseChange', ({ phase, round }) => {
     if (round) {
         document.getElementById('round-number').textContent = round;
     }
+    // Reset ready status for all players
+    gameState.players.forEach(p => p.ready = false);
+    updateGamePlayerList(gameState.players);
     updatePhase(phase);
+});
+
+socket.on('playerReady', ({ playerId }) => {
+    const player = gameState.players.find(p => p.id === playerId);
+    if (player) {
+        player.ready = true;
+        updateGamePlayerList(gameState.players);
+    }
 });
 
 socket.on('voteSubmitted', ({ voterCount, totalPlayers }) => {

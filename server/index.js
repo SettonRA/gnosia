@@ -148,14 +148,19 @@ io.on('connection', (socket) => {
   // Ready for next phase
   socket.on('readyForNextPhase', ({ roomCode, phase }) => {
     const result = gameManager.markPlayerReady(roomCode, socket.id);
-    if (result.success && result.allReady) {
-      if (phase === 'debate') {
-        // Move to voting
-        const updateResult = gameManager.updatePhase(roomCode, 'voting');
-        io.to(roomCode).emit('phaseChange', { 
-          phase: 'voting',
-          alivePlayers: result.alivePlayers
-        });
+    if (result.success) {
+      // Broadcast that this player is ready
+      io.to(roomCode).emit('playerReady', { playerId: socket.id });
+      
+      if (result.allReady) {
+        if (phase === 'debate') {
+          // Move to voting
+          const updateResult = gameManager.updatePhase(roomCode, 'voting');
+          io.to(roomCode).emit('phaseChange', { 
+            phase: 'voting',
+            alivePlayers: result.alivePlayers
+          });
+        }
       }
     }
   });
