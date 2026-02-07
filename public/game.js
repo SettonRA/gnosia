@@ -256,6 +256,7 @@ function updatePhase(phase, instructions) {
     } else if (phase === 'warp') {
         phaseText.textContent = 'Warp Phase';
         readyBtn.classList.add('hidden'); // Hide ready button during warp
+        votingSection.classList.add('hidden'); // Hide voting section
         
         // Clear vote results when entering warp
         gameState.voteResults = [];
@@ -264,12 +265,15 @@ function updatePhase(phase, instructions) {
             instructionText.textContent = 'Spectating the warp phase...';
         } else if (gameState.isEngineer) {
             instructionText.textContent = 'You are the Engineer! Select an alive player to investigate...';
+            votingSection.classList.remove('hidden'); // Show for selection
             showEngineerOptions();
         } else if (gameState.isDoctor) {
             instructionText.textContent = 'You are the Doctor! Select a dead player to investigate...';
+            votingSection.classList.remove('hidden'); // Show for selection
             showDoctorOptions();
         } else if (gameState.isGuardian) {
             instructionText.textContent = 'You are the Guardian! Select a player to protect...';
+            votingSection.classList.remove('hidden'); // Show for selection
             showGuardianOptions();
         } else if (gameState.isGnosia) {
             instructionText.textContent = 'Select a crew member to eliminate during the warp...';
@@ -704,6 +708,25 @@ socket.on('gameRestarted', ({ players }) => {
     gameState.isGnosia = false;
     gameState.phase = 'lobby';
     gameState.selectedVote = null;
+    gameState.isEngineer = false;
+    gameState.isDoctor = false;
+    gameState.isGuardian = false;
+    gameState.investigations = new Map();
+    gameState.voteResults = [];
+    gameState.gnosiaPlayerIds = [];
+    gameState.totalGnosiaCount = 0;
+    
+    // Reset role display styling
+    const roleDisplay = document.getElementById('role-display');
+    roleDisplay.classList.remove('gnosia');
+    roleDisplay.style.background = '';
+    document.getElementById('player-role').textContent = 'Waiting...';
+    
+    // Reset role counts
+    document.getElementById('gnosia-count').textContent = '0';
+    document.getElementById('engineer-count').textContent = '0';
+    document.getElementById('doctor-count').textContent = '0';
+    document.getElementById('guardian-count').textContent = '0';
     
     // Show start button for host
     if (gameState.isHost) {

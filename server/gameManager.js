@@ -643,6 +643,24 @@ function restartGame(roomCode, requesterId) {
   game.round = 0;
   game.votes.clear();
   game.started = false;
+  
+  // Reset helper roles
+  game.helperRoles = {
+    engineer: [],
+    doctor: [],
+    guardian: []
+  };
+  
+  // Reset investigations
+  game.investigations.clear();
+  
+  // Reset warp actions
+  game.warpActions = {
+    engineerInvestigation: false,
+    doctorInvestigation: false,
+    guardianProtection: null,
+    gnosiaElimination: null
+  };
 
   return {
     success: true,
