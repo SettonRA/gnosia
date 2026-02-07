@@ -72,8 +72,8 @@ function startGame(roomCode, requesterId) {
   if (game.host !== requesterId) {
     return { success: false, error: 'Only host can start the game' };
   }
-  if (game.players.size < 4) {
-    return { success: false, error: 'Need at least 4 players to start' };
+  if (game.players.size < 5) {
+    return { success: false, error: 'Need at least 5 players to start' };
   }
 
   // Assign roles
@@ -328,6 +328,38 @@ function markPlayerReady(roomCode, playerId) {
   return { success: true, allReady: false };
 }
 
+function restartGame(roomCode, requesterId) {
+  const game = games.get(roomCode);
+  if (!game) {
+    return { success: false, error: 'Room not found' };
+  }
+  if (game.host !== requesterId) {
+    return { success: false, error: 'Only host can restart the game' };
+  }
+
+  // Reset all players
+  game.players.forEach(player => {
+    player.isAlive = true;
+    player.role = null;
+    player.isGnosia = false;
+    player.ready = false;
+  });
+
+  // Reset game state
+  game.phase = 'lobby';
+  game.round = 0;
+  game.votes.clear();
+  game.started = false;
+
+  return {
+    success: true,
+    players: Array.from(game.players.values()).map(p => ({
+      id: p.id,
+      name: p.name
+    }))
+  };
+}
+
 function handleDisconnect(socketId) {
   for (const [roomCode, game] of games.entries()) {
     if (game.players.has(socketId)) {
@@ -366,6 +398,7 @@ module.exports = {
   updatePhase,
   getWarpInfo,
   markPlayerReady,
+  restartGame,
   handleDisconnect,
   getGamesCount
 };

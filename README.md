@@ -16,7 +16,7 @@ A transport spaceship has just escaped from a planet, but some passengers have b
 
 ## Features
 
-- 4-15 player support
+- 5-15 player support
 - Room-based multiplayer with 6-character room codes
 - Real-time game state synchronization
 - Simple text-based interface
@@ -88,7 +88,7 @@ backend gnosia
 
 1. One player creates a room and shares the room code
 2. Other players join using the room code
-3. Host starts the game when all players are ready (minimum 4 players)
+3. Host starts the game when all players are ready (minimum 5 players)
 4. Players receive their secret roles (Crew or Gnosia)
 5. Each round:
    - **Debate**: Discuss on Discord who might be Gnosia

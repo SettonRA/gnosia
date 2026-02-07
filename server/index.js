@@ -160,6 +160,18 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Restart game
+  socket.on('restartGame', (roomCode) => {
+    const result = gameManager.restartGame(roomCode, socket.id);
+    if (result.success) {
+      io.to(roomCode).emit('gameRestarted', {
+        players: result.players
+      });
+    } else {
+      socket.emit('error', { message: result.error });
+    }
+  });
+
   // Disconnect
   socket.on('disconnect', () => {
     const result = gameManager.handleDisconnect(socket.id);

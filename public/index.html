@@ -41,7 +41,7 @@
                 <div id="player-list" class="player-list"></div>
                 <button id="start-game-btn" class="btn btn-primary hidden">Start Game</button>
                 <div class="info-box">
-                    <p><strong>Game Info:</strong> Need 4-15 players. Use Discord for voice chat during debate phases.</p>
+                    <p><strong>Players:</strong> <span id="player-count">0</span> / 15 (minimum 5 required)</p>
                 </div>
             </div>
         </div>
@@ -95,7 +95,10 @@
             <div class="container">
                 <h2 id="winner-text">Game Over</h2>
                 <div id="final-results" class="final-results"></div>
-                <button id="return-lobby-btn" class="btn btn-primary">Return to Main Menu</button>
+                <div class="button-group">
+                    <button id="new-game-btn" class="btn btn-primary hidden">Start New Game</button>
+                    <button id="return-lobby-btn" class="btn btn-secondary">Return to Main Menu</button>
+                </div>
             </div>
         </div>
 

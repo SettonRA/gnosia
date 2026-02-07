@@ -97,6 +97,12 @@ function updatePlayerList(players, gameStarted = false) {
         playerEl.textContent = player.name;
         container.appendChild(playerEl);
     });
+    
+    // Update player count
+    const playerCount = document.getElementById('player-count');
+    if (playerCount) {
+        playerCount.textContent = players.length;
+    }
 }
 
 function updateGamePlayerList(players) {
@@ -224,6 +230,10 @@ document.getElementById('return-lobby-btn').addEventListener('click', () => {
     window.location.reload();
 });
 
+document.getElementById('new-game-btn').addEventListener('click', () => {
+    socket.emit('restartGame', gameState.roomCode);
+});
+
 // Socket Event Handlers
 socket.on('roomCreated', ({ roomCode, playerName }) => {
     gameState.roomCode = roomCode;
@@ -314,6 +324,11 @@ socket.on('gameOver', ({ winner, finalState }) => {
         `;
         resultsContainer.appendChild(playerEl);
     });
+    
+    // Show new game button for host
+    if (gameState.isHost) {
+        document.getElementById('new-game-btn').classList.remove('hidden');
+    }
 });
 
 socket.on('playerDisconnected', ({ playerName }) => {
@@ -322,4 +337,22 @@ socket.on('playerDisconnected', ({ playerName }) => {
 
 socket.on('error', ({ message }) => {
     showNotification(`Error: ${message}`);
+});
+
+socket.on('gameRestarted', ({ players }) => {
+    gameState.players = players;
+    showScreen('lobby');
+    updatePlayerList(players);
+    showNotification('New game started! Waiting for host...');
+    
+    // Reset game state
+    gameState.role = null;
+    gameState.isGnosia = false;
+    gameState.phase = 'lobby';
+    gameState.selectedVote = null;
+    
+    // Show start button for host
+    if (gameState.isHost) {
+        document.getElementById('start-game-btn').classList.remove('hidden');
+    }
 });
