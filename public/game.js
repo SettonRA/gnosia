@@ -276,11 +276,15 @@ socket.on('voteSubmitted', ({ voterCount, totalPlayers }) => {
     showNotification(`${voterCount}/${totalPlayers} votes submitted`);
 });
 
-socket.on('votingComplete', ({ eliminatedPlayer, voteResults }) => {
+socket.on('votingComplete', ({ eliminatedPlayer, voteResults, players }) => {
+    gameState.players = players;
+    updateGamePlayerList(players);
     showNotification(`${eliminatedPlayer.name} frozen! (Role: ${eliminatedPlayer.role})`);
 });
 
-socket.on('playerEliminated', ({ eliminatedPlayer, round }) => {
+socket.on('playerEliminated', ({ eliminatedPlayer, round, players }) => {
+    gameState.players = players;
+    updateGamePlayerList(players);
     showNotification(`${eliminatedPlayer.name} was eliminated by the Gnosia!`);
     document.getElementById('round-number').textContent = round;
 });

@@ -83,7 +83,8 @@ io.on('connection', (socket) => {
       if (result.allVoted) {
         io.to(roomCode).emit('votingComplete', {
           eliminatedPlayer: result.eliminatedPlayer,
-          voteResults: result.voteResults
+          voteResults: result.voteResults,
+          players: result.players
         });
 
         // Check for game end
@@ -94,6 +95,7 @@ io.on('connection', (socket) => {
           });
         } else {
           // Move to warp phase
+          gameManager.updatePhase(roomCode, 'warp');
           io.to(roomCode).emit('phaseChange', { phase: 'warp' });
         }
       }
@@ -108,7 +110,8 @@ io.on('connection', (socket) => {
     if (result.success) {
       io.to(roomCode).emit('playerEliminated', {
         eliminatedPlayer: result.eliminatedPlayer,
-        round: result.round
+        round: result.round,
+        players: result.players
       });
 
       // Check for game end
@@ -119,6 +122,7 @@ io.on('connection', (socket) => {
         });
       } else {
         // Start new debate phase
+        gameManager.updatePhase(roomCode, 'debate');
         io.to(roomCode).emit('phaseChange', { 
           phase: 'debate',
           round: result.round

@@ -178,6 +178,11 @@ function submitVote(roomCode, voterId, targetPlayerId) {
         playerName: game.players.get(id).name,
         votes: count
       })),
+      players: Array.from(game.players.values()).map(p => ({
+        id: p.id,
+        name: p.name,
+        isAlive: p.isAlive
+      })),
       gameOver,
       winner,
       finalState: gameOver ? getGameState(game) : null
@@ -224,6 +229,11 @@ function gnosiaEliminate(roomCode, gnosiaId, targetPlayerId) {
       id: target.id,
       name: target.name
     },
+    players: Array.from(game.players.values()).map(p => ({
+      id: p.id,
+      name: p.name,
+      isAlive: p.isAlive
+    })),
     round: game.round,
     gameOver,
     winner,
