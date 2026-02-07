@@ -145,37 +145,39 @@ function startGame(roomCode, requesterId) {
     }
   }
   
-  // Assign helper roles to crew members (equal to number of Gnosia)
-  const helperRoleCount = gnosiaCount;
+  // Determine available helper roles based on Gnosia count
   const availableHelperRoles = [ROLES.ENGINEER, ROLES.GUARDIAN];
-  
-  // Only include Doctor if there are 2+ Gnosia
   if (gnosiaCount >= 2) {
     availableHelperRoles.push(ROLES.DOCTOR);
   }
   
+  // Randomly select helper roles equal to Gnosia count (can have duplicates)
+  const selectedHelperRoles = [];
+  for (let i = 0; i < gnosiaCount; i++) {
+    const randomRole = availableHelperRoles[Math.floor(Math.random() * availableHelperRoles.length)];
+    selectedHelperRoles.push(randomRole);
+  }
+  
+  // Shuffle the selected roles
+  selectedHelperRoles.sort(() => Math.random() - 0.5);
+  
   // Shuffle crew members for random helper role assignment
   const shuffledCrew = crewPlayers.sort(() => Math.random() - 0.5);
   
-  // Assign helper roles
-  let helperRoleIndex = 0;
+  // Assign helper roles to crew members
   for (let i = 0; i < shuffledCrew.length; i++) {
-    if (i < helperRoleCount && availableHelperRoles.length > 0) {
-      // Assign a helper role
-      const roleIndex = helperRoleIndex % availableHelperRoles.length;
-      const helperRole = availableHelperRoles[roleIndex];
+    if (i < selectedHelperRoles.length) {
+      const helperRole = selectedHelperRoles[i];
       shuffledCrew[i].role = helperRole;
       
-      // Store helper role player IDs
+      // Store helper role player IDs (now arrays to support multiples)
       if (helperRole === ROLES.ENGINEER) {
-        game.helperRoles.engineer = shuffledCrew[i].id;
+        game.helperRoles.engineer.push(shuffledCrew[i].id);
       } else if (helperRole === ROLES.DOCTOR) {
-        game.helperRoles.doctor = shuffledCrew[i].id;
+        game.helperRoles.doctor.push(shuffledCrew[i].id);
       } else if (helperRole === ROLES.GUARDIAN) {
-        game.helperRoles.guardian = shuffledCrew[i].id;
+        game.helperRoles.guardian.push(shuffledCrew[i].id);
       }
-      
-      helperRoleIndex++;
     } else {
       // Regular crew member
       shuffledCrew[i].role = ROLES.CREW;
@@ -209,7 +211,6 @@ function startGame(roomCode, requesterId) {
     engineer: game.helperRoles.engineer.length,
     doctor: game.helperRoles.doctor.length,
     guardian: game.helperRoles.guardian.length,
-    crew: playerArray.filter(p => !p.isGnosia && p.role === ROLES.CREW).length,
     gnosia: gnosiaPlayerIds.length
   };
 

@@ -257,10 +257,11 @@ function updatePhase(phase, instructions) {
         phaseText.textContent = 'Warp Phase';
         readyBtn.classList.add('hidden'); // Hide ready button during warp
         
+        // Clear vote results when entering warp
+        gameState.voteResults = [];
+        
         if (gameState.isSpectator) {
             instructionText.textContent = 'Spectating the warp phase...';
-        } else if (gameState.isGnosia) {
-            instructionText.textContent = 'Select a crew member to eliminate during the warp...';
         } else if (gameState.isEngineer) {
             instructionText.textContent = 'You are the Engineer! Select an alive player to investigate...';
             showEngineerOptions();
@@ -270,6 +271,8 @@ function updatePhase(phase, instructions) {
         } else if (gameState.isGuardian) {
             instructionText.textContent = 'You are the Guardian! Select a player to protect...';
             showGuardianOptions();
+        } else if (gameState.isGnosia) {
+            instructionText.textContent = 'Select a crew member to eliminate during the warp...';
         } else {
             instructionText.textContent = 'The ship is warping. Gnosia are selecting their target...';
         }
@@ -555,7 +558,15 @@ socket.on('roleAssigned', ({ role, isGnosia, gnosiaPlayers, helperRoleCounts, is
         document.getElementById('engineer-count').textContent = helperRoleCounts.engineer || 0;
         document.getElementById('doctor-count').textContent = helperRoleCounts.doctor || 0;
         document.getElementById('guardian-count').textContent = helperRoleCounts.guardian || 0;
-        document.getElementById('crew-count').textContent = helperRoleCounts.crew || 0;
+    }
+    
+    // Update role display color based on role
+    if (isGnosia) {
+        roleDisplay.style.background = 'linear-gradient(135deg, rgba(220, 38, 38, 0.3), rgba(153, 27, 27, 0.3))';
+    } else if (isEngineer || isDoctor || isGuardian) {
+        roleDisplay.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(22, 163, 74, 0.3))';
+    } else {
+        roleDisplay.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.3))';
     }
 });
 
