@@ -10,7 +10,8 @@ let gameState = {
     phase: 'lobby',
     isHost: false,
     players: [],
-    selectedVote: null
+    selectedVote: null,
+    voteResults: []
 };
 
 // DOM Elements
@@ -117,8 +118,18 @@ function updateGamePlayerList(players) {
         if (player.ready && player.isAlive) {
             playerEl.classList.add('ready');
         }
+        
+        // Get vote count for this player during warp phase
+        let voteCount = '';
+        if (gameState.phase === 'warp' && gameState.voteResults && gameState.voteResults.length > 0) {
+            const voteResult = gameState.voteResults.find(v => v.playerId === player.id);
+            if (voteResult) {
+                voteCount = ` (${voteResult.votes} vote${voteResult.votes !== 1 ? 's' : ''})`;
+            }
+        }
+        
         playerEl.innerHTML = `
-            <strong>${player.name}</strong>
+            <strong>${player.name}${voteCount}</strong>
             ${player.isAlive ? '<span style="color: #4ade80;">● Alive</span>' : '<span style="color: #f87171;">● Frozen/Dead</span>'}
         `;
         container.appendChild(playerEl);
@@ -307,6 +318,12 @@ socket.on('phaseChange', ({ phase, round }) => {
     }
     // Reset ready status for all players
     gameState.players.forEach(p => p.ready = false);
+    
+    // Clear vote results when starting new debate phase
+    if (phase === 'debate') {
+        gameState.voteResults = [];
+    }
+    
     updateGamePlayerList(gameState.players);
     updatePhase(phase);
 });
@@ -325,6 +342,7 @@ socket.on('voteSubmitted', ({ voterCount, totalPlayers }) => {
 
 socket.on('votingComplete', ({ eliminatedPlayer, voteResults, players }) => {
     gameState.players = players;
+    gameState.voteResults = voteResults; // Store vote results
     updateGamePlayerList(players);
     showNotification(`${eliminatedPlayer.name} frozen! (Role: ${eliminatedPlayer.role})`);
 });
