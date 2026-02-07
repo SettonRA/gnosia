@@ -324,8 +324,8 @@ socket.on('phaseChange', ({ phase, round }) => {
         gameState.voteResults = [];
     }
     
-    updateGamePlayerList(gameState.players);
     updatePhase(phase);
+    updateGamePlayerList(gameState.players); // Update after phase changes so vote counts show
 });
 
 socket.on('playerReady', ({ playerId }) => {
@@ -343,8 +343,8 @@ socket.on('voteSubmitted', ({ voterCount, totalPlayers }) => {
 socket.on('votingComplete', ({ eliminatedPlayer, voteResults, players }) => {
     gameState.players = players;
     gameState.voteResults = voteResults; // Store vote results
-    updateGamePlayerList(players);
     showNotification(`${eliminatedPlayer.name} frozen! (Role: ${eliminatedPlayer.role})`);
+    // Don't update player list here - wait for phaseChange to warp
 });
 
 socket.on('playerEliminated', ({ eliminatedPlayer, round, players }) => {
