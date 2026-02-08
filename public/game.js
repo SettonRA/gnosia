@@ -636,7 +636,6 @@ socket.on('voteSubmitted', ({ voterCount, totalPlayers }) => {
 socket.on('votingComplete', ({ eliminatedPlayer, voteResults, players }) => {
     gameState.players = players;
     gameState.voteResults = voteResults; // Store vote results
-    updateGamePlayerList(players); // Update list to show vote counts
     showNotification(`${eliminatedPlayer.name} was frozen!`);
     // Don't update player list here - wait for phaseChange to warp
 });
