@@ -17,6 +17,7 @@
                     <button id="create-room-btn" class="btn btn-primary">Create Room</button>
                     <button id="join-room-btn" class="btn btn-secondary">Join Room</button>
                 </div>
+                <button id="rules-btn-landing" class="btn btn-link">📖 View Rules</button>
             </div>
         </div>
 
@@ -65,6 +66,7 @@
                     <div class="phase-indicator">
                         <span id="current-phase">Debate Phase</span>
                     </div>
+                    <button id="rules-btn-game" class="btn btn-link-small">📖 Rules</button>
                 </div>
 
                 <!-- Role Display -->
@@ -131,6 +133,73 @@
                 <div class="button-group">
                     <button id="new-game-btn" class="btn btn-primary hidden">Start New Game</button>
                     <button id="return-lobby-btn" class="btn btn-secondary">Return to Main Menu</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rules Modal -->
+        <div id="rules-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>📖 Game Rules</h2>
+                    <button id="close-rules" class="btn-close">×</button>
+                </div>
+                <div class="modal-body">
+                    <h3>Objective</h3>
+                    <p><strong>Crew:</strong> Eliminate all Gnosia by voting them into Deep Freeze.</p>
+                    <p><strong>Gnosia:</strong> Eliminate crew members until you outnumber them.</p>
+                    
+                    <h3>Game Phases</h3>
+                    <div class="rules-section">
+                        <h4>1. Debate Phase</h4>
+                        <p>Discuss with other players (via voice chat) who you think is Gnosia. Share information and suspicions.</p>
+                    </div>
+                    <div class="rules-section">
+                        <h4>2. Voting Phase</h4>
+                        <p>Vote to put one player into Deep Freeze. The player with the most votes is eliminated from the round.</p>
+                    </div>
+                    <div class="rules-section">
+                        <h4>3. Warp Phase</h4>
+                        <p>During warp, the Gnosia select a crew member to eliminate, while helper roles perform their actions:</p>
+                        <ul>
+                            <li><strong>Gnosia:</strong> Choose a crew member to eliminate</li>
+                            <li><strong>Engineer:</strong> Investigate an alive player to learn if they're Human or Gnosia</li>
+                            <li><strong>Doctor:</strong> Investigate a dead player to learn their role (only with 2+ Gnosia)</li>
+                            <li><strong>Guardian:</strong> Protect a player from Gnosia elimination (cannot protect themselves)</li>
+                        </ul>
+                        <p>Once all actions are complete, the warp phase ends and the next round begins.</p>
+                    </div>
+                    
+                    <h3>Roles</h3>
+                    <div class="rules-section">
+                        <h4>Crew Member</h4>
+                        <p>Standard crew with no special abilities. Work together to identify the Gnosia.</p>
+                    </div>
+                    <div class="rules-section">
+                        <h4>Gnosia</h4>
+                        <p>Imposters trying to eliminate the crew. Know who the other Gnosia are. Must eliminate crew members during the warp phase.</p>
+                    </div>
+                    <div class="rules-section">
+                        <h4>Engineer</h4>
+                        <p>Can investigate one alive player during warp phase to learn if they're Human or Gnosia.</p>
+                    </div>
+                    <div class="rules-section">
+                        <h4>Doctor</h4>
+                        <p>Can investigate one eliminated player during warp phase to learn their true role. Only available when there are 2 or more Gnosia.</p>
+                    </div>
+                    <div class="rules-section">
+                        <h4>Guardian</h4>
+                        <p>Can protect one player (except themselves) during warp phase from Gnosia elimination.</p>
+                    </div>
+                    
+                    <h3>Tips</h3>
+                    <ul>
+                        <li>Helper roles (Engineer, Doctor, Guardian) are randomly assigned in equal numbers to the Gnosia count</li>
+                        <li>Pay attention to voting patterns and player behavior</li>
+                        <li>Engineers and Doctors should share their findings strategically</li>
+                        <li>Gnosia can see each other but crew cannot</li>
+                        <li>Use voice chat to discuss and build trust with other players</li>
+                    </ul>
                 </div>
             </div>
         </div>

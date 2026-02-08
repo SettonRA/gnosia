@@ -30,6 +30,24 @@ const screens = {
     gameover: document.getElementById('gameover-screen')
 };
 
+// Rules Modal
+const rulesModal = document.getElementById('rules-modal');
+document.getElementById('rules-btn-landing').addEventListener('click', () => {
+    rulesModal.classList.remove('hidden');
+});
+document.getElementById('rules-btn-game').addEventListener('click', () => {
+    rulesModal.classList.remove('hidden');
+});
+document.getElementById('close-rules').addEventListener('click', () => {
+    rulesModal.classList.add('hidden');
+});
+// Click outside modal to close
+rulesModal.addEventListener('click', (e) => {
+    if (e.target === rulesModal) {
+        rulesModal.classList.add('hidden');
+    }
+});
+
 // Utility Functions
 function showScreen(screenName) {
     Object.values(screens).forEach(screen => screen.classList.add('hidden'));
