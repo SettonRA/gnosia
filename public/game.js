@@ -580,6 +580,9 @@ socket.on('roleAssigned', ({ role, isGnosia, isFollower, gnosiaPlayers, helperRo
     document.getElementById('player-role').textContent = isFollower ? 'Follower' : role;
     const roleDisplay = document.getElementById('role-display');
     
+    // Clear any previous gnosia class
+    roleDisplay.classList.remove('gnosia');
+    
     if (isGnosia) {
         roleDisplay.classList.add('gnosia');
         

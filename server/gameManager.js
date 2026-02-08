@@ -179,8 +179,9 @@ function startGame(roomCode, requesterId) {
   // Assign Follower first if applicable
   if (hasFollower && shuffledCrew.length > 0) {
     followerPlayer = shuffledCrew[0];
-    followerPlayer.role = ROLES.FOLLOWER;
+    followerPlayer.role = ROLES.CREW; // Follower shows as Crew
     followerPlayer.isFollower = true;
+    followerPlayer.isGnosia = false; // Explicitly set to false
   }
   
   // Assign helper roles to crew members (skip Follower if assigned)
@@ -604,7 +605,7 @@ function guardianProtect(roomCode, guardianId, targetPlayerId) {
 function checkWinCondition(game) {
   const alivePlayers = Array.from(game.players.values()).filter(p => p.isAlive);
   const aliveGnosia = alivePlayers.filter(p => p.isGnosia).length;
-  const aliveCrew = alivePlayers.filter(p => !p.isGnosia && !p.isFollower).length;
+  const aliveCrew = alivePlayers.filter(p => !p.isGnosia).length; // Follower counts as crew for win condition
 
   if (aliveGnosia === 0) {
     return { gameOver: true, winner: 'crew' };
