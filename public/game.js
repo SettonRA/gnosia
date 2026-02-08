@@ -636,6 +636,7 @@ socket.on('voteSubmitted', ({ voterCount, totalPlayers }) => {
 });
 
 socket.on('votingComplete', ({ eliminatedPlayer, voteResults, players }) => {
+    console.log('votingComplete received - voteResults:', voteResults);
     gameState.players = players;
     gameState.voteResults = voteResults; // Store vote results
     showNotification(`${eliminatedPlayer.name} was frozen!`);
