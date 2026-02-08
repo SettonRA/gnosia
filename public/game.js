@@ -349,7 +349,7 @@ function showGnosiaEliminationOptions(alivePlayers) {
                     targetPlayerId: player.id 
                 });
                 section.classList.add('hidden');
-                showNotification('Target eliminated');
+                showNotification(`${player.name} targeted`);
             };
             container.appendChild(btn);
         }
