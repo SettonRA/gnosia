@@ -66,7 +66,6 @@
                     <div class="phase-indicator">
                         <span id="current-phase">Debate Phase</span>
                     </div>
-                    <button id="rules-btn-game" class="btn btn-link-small">📖 Rules</button>
                 </div>
 
                 <!-- Role Display -->
@@ -122,6 +121,12 @@
 
                 <!-- Ready Button -->
                 <button id="ready-btn" class="btn btn-primary">Ready for Next Phase</button>
+                
+                <!-- Game Info Buttons -->
+                <div class="game-info-buttons">
+                    <button id="story-btn-game" class="btn btn-link">📖 Story</button>
+                    <button id="rules-btn-game" class="btn btn-link">📋 Rules</button>
+                </div>
             </div>
         </div>
 
@@ -133,6 +138,23 @@
                 <div class="button-group">
                     <button id="new-game-btn" class="btn btn-primary hidden">Start New Game</button>
                     <button id="return-lobby-btn" class="btn btn-secondary">Return to Main Menu</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Story Modal -->
+        <div id="story-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>📖 Story</h2>
+                    <button id="close-story" class="btn-close">×</button>
+                </div>
+                <div class="modal-body">
+                    <p>Gnosia is set in the far future, where humanity has become a massive spacefaring civilization, dealing with a threat called <strong>Gnosia</strong>, an infestation that compels people to murder other people in the name of their god, <strong>Gnos</strong>.</p>
+                    
+                    <p>You managed to get a ride on a refugee ship escaping from a planet being ravaged by the Gnosia. However, during the trip to another planet, the ship's computer <strong>LeVi</strong> detects Gnosia infection on board the ship and following protocol, instructs the passengers and crew to deduce which one of them is the Gnosia and put them into cold sleep.</p>
+                    
+                    <p><strong>If they fail to do so, the ship is forced to self destruct.</strong></p>
                 </div>
             </div>
         </div>

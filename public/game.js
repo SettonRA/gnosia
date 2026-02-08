@@ -48,6 +48,21 @@ rulesModal.addEventListener('click', (e) => {
     }
 });
 
+// Story Modal
+const storyModal = document.getElementById('story-modal');
+document.getElementById('story-btn-game').addEventListener('click', () => {
+    storyModal.classList.remove('hidden');
+});
+document.getElementById('close-story').addEventListener('click', () => {
+    storyModal.classList.add('hidden');
+});
+// Click outside modal to close
+storyModal.addEventListener('click', (e) => {
+    if (e.target === storyModal) {
+        storyModal.classList.add('hidden');
+    }
+});
+
 // Utility Functions
 function showScreen(screenName) {
     Object.values(screens).forEach(screen => screen.classList.add('hidden'));
