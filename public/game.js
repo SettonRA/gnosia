@@ -634,6 +634,12 @@ socket.on('votingComplete', ({ eliminatedPlayer, voteResults, players }) => {
     gameState.players = players;
     gameState.voteResults = voteResults; // Store vote results
     showNotification(`${eliminatedPlayer.name} was frozen!`);
+    
+    // Update role display if current player was eliminated
+    if (eliminatedPlayer.id === socket.id) {
+        const currentRole = document.getElementById('player-role').textContent;
+        document.getElementById('player-role').textContent = `${currentRole} - Frozen/Dead`;
+    }
     // Don't update player list here - wait for phaseChange to warp
 });
 
@@ -641,6 +647,13 @@ socket.on('playerEliminated', ({ eliminatedPlayer, round, players }) => {
     gameState.players = players;
     updateGamePlayerList(players);
     showNotification(`${eliminatedPlayer.name} was eliminated by the Gnosia!`);
+    
+    // Update role display if current player was eliminated
+    if (eliminatedPlayer.id === socket.id) {
+        const currentRole = document.getElementById('player-role').textContent;
+        document.getElementById('player-role').textContent = `${currentRole} - Frozen/Dead`;
+    }
+    
     document.getElementById('round-number').textContent = round;
 });
 
