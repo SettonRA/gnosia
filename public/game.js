@@ -159,6 +159,7 @@ function updateGamePlayerList(players) {
                 voteCount = ` (${voteResult.votes} vote${voteResult.votes !== 1 ? 's' : ''})`;
             }
         }
+        console.log('Player:', player.name, 'Phase:', gameState.phase, 'VoteCount:', voteCount, 'VoteResults:', gameState.voteResults);
         
         // Show Gnosia label if current player is Gnosia and this player is also Gnosia
         const isOtherGnosia = gameState.isGnosia && gameState.gnosiaPlayerIds && gameState.gnosiaPlayerIds.includes(player.id);
@@ -618,6 +619,7 @@ socket.on('phaseChange', ({ phase, round }) => {
     }
     
     updatePhase(phase);
+    console.log('phaseChange - phase:', phase, 'voteResults:', gameState.voteResults);
     updateGamePlayerList(gameState.players); // Update after phase changes so vote counts show
 });
 
