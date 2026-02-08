@@ -159,7 +159,6 @@ function updateGamePlayerList(players) {
                 voteCount = ` (${voteResult.votes} vote${voteResult.votes !== 1 ? 's' : ''})`;
             }
         }
-        console.log('Player:', player.name, 'Phase:', gameState.phase, 'VoteCount:', voteCount, 'VoteResults:', gameState.voteResults);
         
         // Show Gnosia label if current player is Gnosia and this player is also Gnosia
         const isOtherGnosia = gameState.isGnosia && gameState.gnosiaPlayerIds && gameState.gnosiaPlayerIds.includes(player.id);
@@ -261,9 +260,6 @@ function updatePhase(phase, instructions) {
         phaseText.textContent = 'Warp Phase';
         readyBtn.classList.add('hidden'); // Hide ready button during warp
         votingSection.classList.add('hidden'); // Hide voting section
-        
-        // Clear vote results when entering warp
-        gameState.voteResults = [];
         
         // Check if current player is alive
         const currentPlayer = gameState.players.find(p => p.id === socket.id);
@@ -619,7 +615,6 @@ socket.on('phaseChange', ({ phase, round }) => {
     }
     
     updatePhase(phase);
-    console.log('phaseChange - phase:', phase, 'voteResults:', gameState.voteResults);
     updateGamePlayerList(gameState.players); // Update after phase changes so vote counts show
 });
 
@@ -636,7 +631,6 @@ socket.on('voteSubmitted', ({ voterCount, totalPlayers }) => {
 });
 
 socket.on('votingComplete', ({ eliminatedPlayer, voteResults, players }) => {
-    console.log('votingComplete received - voteResults:', voteResults);
     gameState.players = players;
     gameState.voteResults = voteResults; // Store vote results
     showNotification(`${eliminatedPlayer.name} was frozen!`);
