@@ -319,7 +319,7 @@ function submitVote(roomCode, voterId, targetPlayerId) {
       })),
       gameOver,
       winner,
-      finalState: gameOver ? getGameState(game) : null
+      finalState: gameOver ? getGameState(roomCode) : null
     };
   }
 
@@ -483,7 +483,7 @@ function completeWarpPhase(roomCode) {
     round: game.round,
     gameOver,
     winner,
-    finalState: gameOver ? getGameState(game) : null
+    finalState: gameOver ? getGameState(roomCode) : null
   };
 }
 
@@ -654,7 +654,11 @@ function checkWinCondition(game) {
   return { gameOver: false, winner: null };
 }
 
-function getGameState(game) {
+function getGameState(roomCode) {
+  const game = games.get(roomCode);
+  if (!game) {
+    return null;
+  }
   return {
     players: Array.from(game.players.values()).map(p => ({
       id: p.id,
@@ -666,7 +670,8 @@ function getGameState(game) {
       disconnected: p.disconnected || false,
       ready: p.ready || false
     })),
-    round: game.round
+    round: game.round,
+    phase: game.phase
   };
 }
 
@@ -986,6 +991,7 @@ module.exports = {
   guardianProtect,
   completeWarpPhase,
   updatePhase,
+  getGameState,
   markPlayerReady,
   restartGame,
   handleDisconnect,

@@ -124,7 +124,7 @@ function joinRoom() {
     const playerName = document.getElementById('player-name-input').value.trim();
     const roomCode = document.getElementById('room-code-input').value.trim().toUpperCase();
     if (!playerName || !roomCode) {
-        showNotification('Please enter your name and room code');
+        showNotification('Please enter your name and game code');
         return;
     }
     gameState.playerName = playerName;
@@ -513,7 +513,7 @@ socket.on('roomCreated', ({ roomCode, playerName }) => {
     document.getElementById('display-room-code').textContent = roomCode;
     document.getElementById('start-game-btn').classList.remove('hidden');
     updatePlayerList([{ id: socket.id, name: playerName }]);
-    showNotification('Room created!');
+    showNotification('Game created!');
 });
 
 socket.on('roomJoined', ({ roomCode, isSpectator, gameState: serverGameState }) => {
@@ -536,7 +536,7 @@ socket.on('roomJoined', ({ roomCode, isSpectator, gameState: serverGameState }) 
         if (isSpectator) {
             showNotification('Joined as spectator! You\'ll play in the next game.');
         } else {
-            showNotification('Joined room!');
+            showNotification('Joined game!');
         }
     }
 });
