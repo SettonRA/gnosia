@@ -50,6 +50,9 @@ rulesModal.addEventListener('click', (e) => {
 
 // Story Modal
 const storyModal = document.getElementById('story-modal');
+document.getElementById('story-btn-landing').addEventListener('click', () => {
+    storyModal.classList.remove('hidden');
+});
 document.getElementById('story-btn-game').addEventListener('click', () => {
     storyModal.classList.remove('hidden');
 });
