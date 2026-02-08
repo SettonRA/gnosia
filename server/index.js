@@ -194,18 +194,23 @@ io.on('connection', (socket) => {
           // Move to warp phase
           gameManager.updatePhase(roomCode, 'warp');
           
-          // Get current turn Gnosia player and alive players
-          const warpInfo = gameManager.getWarpInfo(roomCode);
+          // Get alive players for Gnosia elimination
+          const gameState = gameManager.getGameState(roomCode);
+          const alivePlayers = gameState.players
+            .filter(p => p.isAlive)
+            .map(p => ({ id: p.id, name: p.name }));
           
           // Send phase change to all
           io.to(roomCode).emit('phaseChange', { phase: 'warp' });
           
-          // Send elimination phase only to the Gnosia whose turn it is
-          if (warpInfo.currentGnosiaPlayer) {
-            io.to(warpInfo.currentGnosiaPlayer).emit('gnosiaEliminationPhase', {
-              alivePlayers: warpInfo.alivePlayers
-            });
-          }
+          // Send elimination phase to ALL Gnosia players
+          gameState.players.forEach(player => {
+            if (player.isGnosia && player.isAlive) {
+              io.to(player.id).emit('gnosiaEliminationPhase', {
+                alivePlayers
+              });
+            }
+          });
         }
       }
     } else {

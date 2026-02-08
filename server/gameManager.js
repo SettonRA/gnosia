@@ -35,7 +35,6 @@ function createRoom(socketId, playerName, isPublic = false) {
     votes: new Map(),
     started: false,
     isPublic: isPublic,
-    gnosiaEliminationTurnIndex: 0,
     helperRoles: {
       engineer: [],
       doctor: [],
@@ -45,7 +44,7 @@ function createRoom(socketId, playerName, isPublic = false) {
       engineerInvestigation: null,
       doctorInvestigation: null,
       guardianProtection: null,
-      gnosiaElimination: null
+      gnosiaElimination: new Map() // Map of gnosiaId -> targetPlayerId
     },
     investigations: new Map(), // Store investigation results per player
     playerNameToId: new Map([[playerName.toLowerCase(), socketId]]) // Map names to IDs for reconnection
@@ -225,14 +224,10 @@ function startGame(roomCode, requesterId) {
   game.phase = 'debate';
   game.round = 1;
 
-  // Get list of all Gnosia player IDs and initialize turn order
+  // Get list of all Gnosia player IDs
   const gnosiaPlayerIds = playerArray
     .filter(p => p.isGnosia)
     .map(p => p.id);
-  
-  // Store the Gnosia turn order in the game state
-  game.gnosiaTurnOrder = [...gnosiaPlayerIds];
-  game.gnosiaEliminationTurnIndex = 0;
 
   // Count helper roles
   const helperRoleCounts = {
@@ -350,9 +345,9 @@ function gnosiaEliminate(roomCode, gnosiaId, targetPlayerId) {
     return { success: false, error: 'Only alive Gnosia can eliminate' };
   }
   
-  // Check if Gnosia elimination has already been completed
-  if (game.warpActions.gnosiaElimination) {
-    return { success: false, error: 'Gnosia elimination already completed' };
+  // Check if this Gnosia has already voted
+  if (game.warpActions.gnosiaElimination.has(gnosiaId)) {
+    return { success: false, error: 'You have already voted for elimination' };
   }
 
   const target = game.players.get(targetPlayerId);
@@ -360,8 +355,8 @@ function gnosiaEliminate(roomCode, gnosiaId, targetPlayerId) {
     return { success: false, error: 'Invalid target' };
   }
 
-  // Mark that Gnosia elimination action has been taken
-  game.warpActions.gnosiaElimination = targetPlayerId;
+  // Record this Gnosia's vote
+  game.warpActions.gnosiaElimination.set(gnosiaId, targetPlayerId);
 
   // Check if all actions complete
   const allComplete = checkWarpActionsComplete(game);
@@ -378,9 +373,12 @@ function checkWarpActionsComplete(game) {
   // Check if all alive helper roles and Gnosia have acted
   const alivePlayers = Array.from(game.players.values()).filter(p => p.isAlive);
   
-  // Check if Gnosia has acted (wait even if Gnosia disconnected - they can reconnect)
-  if (!game.warpActions.gnosiaElimination) {
-    return false;
+  // Check if all alive, connected Gnosia have voted
+  const aliveConnectedGnosia = alivePlayers.filter(p => p.isGnosia && !p.disconnected);
+  for (const gnosia of aliveConnectedGnosia) {
+    if (!game.warpActions.gnosiaElimination.has(gnosia.id)) {
+      return false; // This Gnosia hasn't voted yet
+    }
   }
   
   // Check if alive Engineers have acted
@@ -422,12 +420,32 @@ function completeWarpPhase(roomCode) {
     return { success: false, error: 'Not in warp phase' };
   }
 
-  const targetPlayerId = game.warpActions.gnosiaElimination;
-  if (!targetPlayerId) {
-    return { success: false, error: 'No elimination target' };
+  // Tally Gnosia votes
+  const voteTally = new Map();
+  for (const [gnosiaId, targetId] of game.warpActions.gnosiaElimination.entries()) {
+    voteTally.set(targetId, (voteTally.get(targetId) || 0) + 1);
   }
 
-  const target = game.players.get(targetPlayerId);
+  // Find target(s) with most votes
+  let maxVotes = 0;
+  let topTargets = [];
+  for (const [targetId, voteCount] of voteTally.entries()) {
+    if (voteCount > maxVotes) {
+      maxVotes = voteCount;
+      topTargets = [targetId];
+    } else if (voteCount === maxVotes) {
+      topTargets.push(targetId);
+    }
+  }
+
+  // If no votes (all Gnosia disconnected), no elimination
+  let targetPlayerId = null;
+  if (topTargets.length > 0) {
+    // Random tie-breaking if multiple targets have same votes
+    targetPlayerId = topTargets[Math.floor(Math.random() * topTargets.length)];
+  }
+
+  const target = targetPlayerId ? game.players.get(targetPlayerId) : null;
   const wasProtected = game.warpActions.guardianProtection && game.warpActions.guardianProtection.targetPlayerId === targetPlayerId;
   
   let eliminatedPlayer = null;
@@ -444,16 +462,11 @@ function completeWarpPhase(roomCode) {
     engineerInvestigation: null,
     doctorInvestigation: null,
     guardianProtection: null,
-    gnosiaElimination: null
+    gnosiaElimination: new Map()
   };
 
   game.round++;
   game.phase = 'debate';
-  
-  // Increment turn index for next Gnosia elimination
-  if (game.gnosiaEliminationTurnIndex !== undefined) {
-    game.gnosiaEliminationTurnIndex++;
-  }
 
   // Check win conditions
   const { gameOver, winner } = checkWinCondition(game);
@@ -654,40 +667,6 @@ function getGameState(game) {
       ready: p.ready || false
     })),
     round: game.round
-  };
-}
-
-function getWarpInfo(roomCode) {
-  const game = games.get(roomCode);
-  if (!game) {
-    return { currentGnosiaPlayer: null, alivePlayers: [] };
-  }
-  
-  const alivePlayers = Array.from(game.players.values()).filter(p => p.isAlive && !p.disconnected);
-  const aliveGnosia = alivePlayers.filter(p => p.isGnosia);
-  
-  // Determine which Gnosia player's turn it is
-  let currentGnosiaPlayer = null;
-  if (aliveGnosia.length > 0 && game.gnosiaTurnOrder) {
-    // Filter turn order to only alive, connected Gnosia
-    const aliveGnosiaTurnOrder = game.gnosiaTurnOrder.filter(id => {
-      const player = game.players.get(id);
-      return player && player.isAlive && player.isGnosia && !player.disconnected;
-    });
-    
-    if (aliveGnosiaTurnOrder.length > 0) {
-      // Ensure turn index is within bounds
-      game.gnosiaEliminationTurnIndex = game.gnosiaEliminationTurnIndex % aliveGnosiaTurnOrder.length;
-      currentGnosiaPlayer = aliveGnosiaTurnOrder[game.gnosiaEliminationTurnIndex];
-    }
-  }
-  
-  return {
-    currentGnosiaPlayer,
-    alivePlayers: alivePlayers.map(p => ({
-      id: p.id,
-      name: p.name
-    }))
   };
 }
 
@@ -948,7 +927,7 @@ function attemptReconnect(roomCode, playerName, newSocketId) {
       engineer: game.warpActions.engineerInvestigation === newSocketId,
       doctor: game.warpActions.doctorInvestigation === newSocketId,
       guardian: game.warpActions.guardianProtection && game.warpActions.guardianProtection.guardianId === newSocketId,
-      gnosia: !!game.warpActions.gnosiaElimination
+      gnosia: game.warpActions.gnosiaElimination.has(newSocketId)
     };
   }
   
@@ -1006,7 +985,6 @@ module.exports = {
   guardianProtect,
   completeWarpPhase,
   updatePhase,
-  getWarpInfo,
   markPlayerReady,
   restartGame,
   handleDisconnect,
