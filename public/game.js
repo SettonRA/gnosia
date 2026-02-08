@@ -172,8 +172,15 @@ function updateGamePlayerList(players) {
             investigationLabel = ` <span style="color: ${color}; font-weight: bold;">(${result})</span>`;
         }
         
+        // Show role if spectator
+        let roleLabel = '';
+        if (gameState.isSpectator && player.role) {
+            const roleColor = player.role === 'Gnosia' ? '#ff6b6b' : '#4ade80';
+            roleLabel = ` <span style="color: ${roleColor}; font-weight: bold;">[${player.role}]</span>`;
+        }
+        
         playerEl.innerHTML = `
-            <strong>${player.name}${voteCount}${gnosiaLabel}${investigationLabel}</strong>
+            <strong>${player.name}${voteCount}${gnosiaLabel}${investigationLabel}${roleLabel}</strong>
             ${player.isAlive ? '<span style="color: #4ade80;">● Alive</span>' : '<span style="color: #f87171;">● Frozen/Dead</span>'}
         `;
         container.appendChild(playerEl);

@@ -75,7 +75,8 @@ function joinRoom(roomCode, socketId, playerName) {
         players: Array.from(game.players.values()).map(p => ({
           id: p.id,
           name: p.name,
-          isAlive: p.isAlive
+          isAlive: p.isAlive,
+          role: p.role // Include role for spectators
         }))
       }
     };
