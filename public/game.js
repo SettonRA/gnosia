@@ -787,7 +787,9 @@ socket.on('gameOver', ({ winner, finalState }) => {
     }
 });
 
-socket.on('playerDisconnected', ({ playerName }) => {
+socket.on('playerDisconnected', ({ playerName, players }) => {
+    gameState.players = players;
+    updateGamePlayerList(players);
     showNotification(`${playerName} disconnected`);
 });
 
@@ -850,7 +852,12 @@ socket.on('reconnected', ({ roomCode, isHost, roleData, gameState: serverGameSta
     document.getElementById('round-number').textContent = serverGameState.round;
     
     // Restore role display
-    document.getElementById('player-role').textContent = gameState.isFollower ? 'Follower' : roleData.role;
+    const currentPlayer = serverGameState.players.find(p => p.id === socket.id);
+    let roleText = gameState.isFollower ? 'Follower' : roleData.role;
+    if (currentPlayer && !currentPlayer.isAlive) {
+        roleText += ' - Frozen/Dead';
+    }
+    document.getElementById('player-role').textContent = roleText;
     const roleDisplay = document.getElementById('role-display');
     roleDisplay.classList.remove('gnosia');
     

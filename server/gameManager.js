@@ -387,7 +387,7 @@ function checkWarpActionsComplete(game) {
   // Check if alive Engineers have acted
   for (const engineerId of game.helperRoles.engineer) {
     const engineer = game.players.get(engineerId);
-    if (engineer && engineer.isAlive && !game.warpActions.engineerInvestigation) {
+    if (engineer && engineer.isAlive && !engineer.disconnected && !game.warpActions.engineerInvestigation) {
       return false;
     }
   }
@@ -397,7 +397,7 @@ function checkWarpActionsComplete(game) {
   if (deadPlayers.length > 0) {
     for (const doctorId of game.helperRoles.doctor) {
       const doctor = game.players.get(doctorId);
-      if (doctor && doctor.isAlive && !game.warpActions.doctorInvestigation) {
+      if (doctor && doctor.isAlive && !doctor.disconnected && !game.warpActions.doctorInvestigation) {
         return false;
       }
     }
@@ -406,7 +406,7 @@ function checkWarpActionsComplete(game) {
   // Check if alive Guardians have acted
   for (const guardianId of game.helperRoles.guardian) {
     const guardian = game.players.get(guardianId);
-    if (guardian && guardian.isAlive && !game.warpActions.guardianProtection) {
+    if (guardian && guardian.isAlive && !guardian.disconnected && !game.warpActions.guardianProtection) {
       return false;
     }
   }
@@ -429,7 +429,7 @@ function completeWarpPhase(roomCode) {
   }
 
   const target = game.players.get(targetPlayerId);
-  const wasProtected = game.warpActions.guardianProtection === targetPlayerId;
+  const wasProtected = game.warpActions.guardianProtection && game.warpActions.guardianProtection.targetPlayerId === targetPlayerId;
   
   let eliminatedPlayer = null;
   if (!wasProtected && target) {
@@ -442,8 +442,8 @@ function completeWarpPhase(roomCode) {
 
   // Reset warp actions for next round
   game.warpActions = {
-    engineerInvestigation: false,
-    doctorInvestigation: false,
+    engineerInvestigation: null,
+    doctorInvestigation: null,
     guardianProtection: null,
     gnosiaElimination: null
   };
@@ -493,6 +493,11 @@ function engineerInvestigate(roomCode, engineerId, targetPlayerId) {
   if (!engineer || !engineer.isAlive) {
     return { success: false, error: 'Engineer must be alive' };
   }
+  
+  // Check if Engineer already investigated this round
+  if (game.warpActions.engineerInvestigation && game.warpActions.engineerInvestigation !== engineerId) {
+    return { success: false, error: 'Investigation already completed' };
+  }
 
   const target = game.players.get(targetPlayerId);
   if (!target || !target.isAlive) {
@@ -506,8 +511,8 @@ function engineerInvestigate(roomCode, engineerId, targetPlayerId) {
   }
   game.investigations.get(engineerId).set(targetPlayerId, result);
   
-  // Mark action as completed
-  game.warpActions.engineerInvestigation = true;
+  // Mark action as completed by this specific engineer
+  game.warpActions.engineerInvestigation = engineerId;
   
   // Check if all actions complete
   const allComplete = checkWarpActionsComplete(game);
@@ -538,6 +543,11 @@ function doctorInvestigate(roomCode, doctorId, targetPlayerId) {
   if (!doctor || !doctor.isAlive) {
     return { success: false, error: 'Doctor must be alive' };
   }
+  
+  // Check if Doctor already investigated this round
+  if (game.warpActions.doctorInvestigation && game.warpActions.doctorInvestigation !== doctorId) {
+    return { success: false, error: 'Investigation already completed' };
+  }
 
   const target = game.players.get(targetPlayerId);
   if (!target || target.isAlive) {
@@ -551,8 +561,8 @@ function doctorInvestigate(roomCode, doctorId, targetPlayerId) {
   }
   game.investigations.get(doctorId).set(targetPlayerId, result);
   
-  // Mark action as completed
-  game.warpActions.doctorInvestigation = true;
+  // Mark action as completed by this specific doctor
+  game.warpActions.doctorInvestigation = doctorId;
   
   // Check if all actions complete
   const allComplete = checkWarpActionsComplete(game);
@@ -583,6 +593,11 @@ function guardianProtect(roomCode, guardianId, targetPlayerId) {
   if (!guardian || !guardian.isAlive) {
     return { success: false, error: 'Guardian must be alive' };
   }
+  
+  // Check if Guardian already protected this round (but allow same guardian to change)
+  if (game.warpActions.guardianProtection && typeof game.warpActions.guardianProtection === 'object' && game.warpActions.guardianProtection.guardianId !== guardianId) {
+    return { success: false, error: 'Protection already completed' };
+  }
 
   const target = game.players.get(targetPlayerId);
   if (!target || !target.isAlive) {
@@ -594,8 +609,8 @@ function guardianProtect(roomCode, guardianId, targetPlayerId) {
     return { success: false, error: 'Guardian cannot protect themselves' };
   }
 
-  // Store protected player
-  game.warpActions.guardianProtection = targetPlayerId;
+  // Store protected player and guardian ID
+  game.warpActions.guardianProtection = { guardianId, targetPlayerId };
   
   // Check if all actions complete
   const allComplete = checkWarpActionsComplete(game);
@@ -648,16 +663,16 @@ function getWarpInfo(roomCode) {
     return { currentGnosiaPlayer: null, alivePlayers: [] };
   }
   
-  const alivePlayers = Array.from(game.players.values()).filter(p => p.isAlive);
+  const alivePlayers = Array.from(game.players.values()).filter(p => p.isAlive && !p.disconnected);
   const aliveGnosia = alivePlayers.filter(p => p.isGnosia);
   
   // Determine which Gnosia player's turn it is
   let currentGnosiaPlayer = null;
   if (aliveGnosia.length > 0 && game.gnosiaTurnOrder) {
-    // Filter turn order to only alive Gnosia
+    // Filter turn order to only alive, connected Gnosia
     const aliveGnosiaTurnOrder = game.gnosiaTurnOrder.filter(id => {
       const player = game.players.get(id);
-      return player && player.isAlive && player.isGnosia;
+      return player && player.isAlive && player.isGnosia && !player.disconnected;
     });
     
     if (aliveGnosiaTurnOrder.length > 0) {
@@ -791,6 +806,7 @@ function handleDisconnect(socketId) {
       // Mark player as disconnected instead of deleting
       player.disconnected = true;
       player.disconnectTime = Date.now();
+      player.ready = false; // Unmark as ready
       
       // If game hasn't started and all players are disconnected, delete the room
       if (!game.started) {
