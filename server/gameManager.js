@@ -690,7 +690,8 @@ function markPlayerReady(roomCode, playerId) {
     player.ready = true;
   }
 
-  const alivePlayers = Array.from(game.players.values()).filter(p => p.isAlive);
+  // Only check alive, connected players for ready status
+  const alivePlayers = Array.from(game.players.values()).filter(p => p.isAlive && !p.disconnected);
   const allReady = alivePlayers.every(p => p.ready);
 
   if (allReady) {
