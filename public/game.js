@@ -40,7 +40,7 @@ function showNotification(message) {
     const notif = document.getElementById('notification');
     notif.textContent = message;
     notif.classList.remove('hidden');
-    setTimeout(() => notif.classList.add('hidden'), 3000);
+    setTimeout(() => notif.classList.add('hidden'), 6000);
 }
 
 // Landing Screen
@@ -636,6 +636,7 @@ socket.on('voteSubmitted', ({ voterCount, totalPlayers }) => {
 socket.on('votingComplete', ({ eliminatedPlayer, voteResults, players }) => {
     gameState.players = players;
     gameState.voteResults = voteResults; // Store vote results
+    updateGamePlayerList(players); // Update list to show vote counts
     showNotification(`${eliminatedPlayer.name} was frozen!`);
     // Don't update player list here - wait for phaseChange to warp
 });
