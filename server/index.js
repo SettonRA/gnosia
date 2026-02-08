@@ -111,10 +111,11 @@ io.on('connection', (socket) => {
       );
       
       // Send role assignments privately to each player
-      result.roleAssignments.forEach(({ socketId, role, isGnosia }) => {
+      result.roleAssignments.forEach(({ socketId, role, isGnosia, isFollower }) => {
         const roleData = { 
           role, 
           isGnosia,
+          isFollower,
           gnosiaPlayers, // Send to all players for the count display
           helperRoleCounts: result.helperRoleCounts,
           isEngineer: result.helperRoles.engineer.includes(socketId),

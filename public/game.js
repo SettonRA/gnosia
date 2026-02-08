@@ -208,11 +208,20 @@ function updateGamePlayerList(players) {
             investigationLabel = ` <span style="color: ${color}; font-weight: bold;">(${result})</span>`;
         }
         
-        // Show role if spectator
+        // Show role if spectator (including Follower)
         let roleLabel = '';
         if (gameState.isSpectator && player.role) {
-            const roleColor = player.role === 'Gnosia' ? '#ff6b6b' : '#4ade80';
-            roleLabel = ` <span style="color: ${roleColor}; font-weight: bold;">[${player.role}]</span>`;
+            let displayRole = player.role;
+            let roleColor = '#4ade80'; // Default crew color
+            
+            if (player.role === 'Gnosia') {
+                roleColor = '#ff6b6b';
+            } else if (player.isFollower) {
+                displayRole = 'Follower';
+                roleColor = '#fbbf24'; // Yellow/orange for Follower
+            }
+            
+            roleLabel = ` <span style="color: ${roleColor}; font-weight: bold;">[${displayRole}]</span>`;
         }
         
         playerEl.innerHTML = `
@@ -557,17 +566,20 @@ socket.on('playerJoined', ({ players, message }) => {
     showNotification(message);
 });
 
-socket.on('roleAssigned', ({ role, isGnosia, gnosiaPlayers, helperRoleCounts, isEngineer, isDoctor, isGuardian }) => {
+socket.on('roleAssigned', ({ role, isGnosia, isFollower, gnosiaPlayers, helperRoleCounts, isEngineer, isDoctor, isGuardian }) => {
     gameState.role = role;
     gameState.isGnosia = isGnosia;
+    gameState.isFollower = isFollower || false;
     gameState.isSpectator = false; // No longer a spectator once role is assigned
     gameState.isEngineer = isEngineer || false;
     gameState.isDoctor = isDoctor || false;
     gameState.isGuardian = isGuardian || false;
     gameState.investigations = new Map(); // Store investigation results
     
-    document.getElementById('player-role').textContent = role;
+    // Display appropriate role name (Follower sees "Follower", not "Crew")
+    document.getElementById('player-role').textContent = isFollower ? 'Follower' : role;
     const roleDisplay = document.getElementById('role-display');
+    
     if (isGnosia) {
         roleDisplay.classList.add('gnosia');
         
@@ -589,6 +601,16 @@ socket.on('roleAssigned', ({ role, isGnosia, gnosiaPlayers, helperRoleCounts, is
                 showNotification(`Your fellow Gnosia: ${gnosiaNames}`);
             }
         }
+    } else if (isFollower) {
+        // Follower gets red display since they're Gnosia-aligned
+        roleDisplay.classList.add('gnosia');
+        
+        // Follower notification
+        if (gnosiaPlayers) {
+            gameState.totalGnosiaCount = gnosiaPlayers.length;
+            document.getElementById('gnosia-count').textContent = gameState.totalGnosiaCount;
+        }
+        showNotification('You are a Follower! Win with Gnosia but stay hidden. You appear as Human in investigations.');
     } else {
         // For crew members, store the total count
         if (gnosiaPlayers) {
@@ -739,9 +761,17 @@ socket.on('gameOver', ({ winner, finalState }) => {
         const playerEl = document.createElement('div');
         playerEl.className = 'result-player';
         if (player.isGnosia) playerEl.classList.add('gnosia');
+        
+        // Determine display role (reveal Follower in results)
+        let displayRole = player.role;
+        if (player.isFollower) {
+            displayRole = 'Follower';
+            playerEl.style.color = '#fbbf24'; // Yellow/orange for Follower
+        }
+        
         playerEl.innerHTML = `
             <span>${player.name}</span>
-            <span>${player.role} ${player.isAlive ? '(Survived)' : '(Eliminated)'}</span>
+            <span>${displayRole} ${player.isAlive ? '(Survived)' : '(Eliminated)'}</span>
         `;
         resultsContainer.appendChild(playerEl);
     });
@@ -769,6 +799,7 @@ socket.on('gameRestarted', ({ players }) => {
     // Reset game state
     gameState.role = null;
     gameState.isGnosia = false;
+    gameState.isFollower = false;
     gameState.phase = 'lobby';
     gameState.selectedVote = null;
     gameState.isEngineer = false;

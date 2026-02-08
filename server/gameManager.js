@@ -7,7 +7,8 @@ const ROLES = {
   GNOSIA: 'Gnosia',
   ENGINEER: 'Engineer',
   DOCTOR: 'Doctor',
-  GUARDIAN: 'Guardian'
+  GUARDIAN: 'Guardian',
+  FOLLOWER: 'Follower'
 };
 
 function generateRoomCode() {
@@ -131,12 +132,22 @@ function startGame(roomCode, requesterId) {
   const roleAssignments = [];
   const gnosiaPlayers = [];
   const crewPlayers = [];
+  let followerPlayer = null;
+  
+  // Determine if there should be a Follower (only if 2+ Gnosia)
+  let hasFollower = false;
+  if (gnosiaCount >= 2) {
+    // 30% chance per Gnosia past the first one
+    const followerChance = (gnosiaCount - 1) * 0.30;
+    hasFollower = Math.random() < followerChance;
+  }
   
   for (let i = 0; i < shuffled.length; i++) {
     const player = shuffled[i];
     const isGnosia = i < gnosiaCount;
     player.isGnosia = isGnosia;
     player.isAlive = true;
+    player.isFollower = false;
     
     if (isGnosia) {
       player.role = ROLES.GNOSIA;
@@ -165,10 +176,19 @@ function startGame(roomCode, requesterId) {
   // Shuffle crew members for random helper role assignment
   const shuffledCrew = crewPlayers.sort(() => Math.random() - 0.5);
   
-  // Assign helper roles to crew members
-  for (let i = 0; i < shuffledCrew.length; i++) {
-    if (i < selectedHelperRoles.length) {
-      const helperRole = selectedHelperRoles[i];
+  // Assign Follower first if applicable
+  if (hasFollower && shuffledCrew.length > 0) {
+    followerPlayer = shuffledCrew[0];
+    followerPlayer.role = ROLES.FOLLOWER;
+    followerPlayer.isFollower = true;
+  }
+  
+  // Assign helper roles to crew members (skip Follower if assigned)
+  const startIndex = hasFollower ? 1 : 0;
+  for (let i = startIndex; i < shuffledCrew.length; i++) {
+    const helperRoleIndex = i - startIndex;
+    if (helperRoleIndex < selectedHelperRoles.length) {
+      const helperRole = selectedHelperRoles[helperRoleIndex];
       shuffledCrew[i].role = helperRole;
       
       // Store helper role player IDs (now arrays to support multiples)
@@ -190,7 +210,8 @@ function startGame(roomCode, requesterId) {
     roleAssignments.push({
       socketId: player.id,
       role: player.role,
-      isGnosia: player.isGnosia
+      isGnosia: player.isGnosia,
+      isFollower: player.isFollower || false
     });
   });
 
@@ -472,8 +493,8 @@ function engineerInvestigate(roomCode, engineerId, targetPlayerId) {
     return { success: false, error: 'Target must be alive' };
   }
 
-  // Store investigation result
-  const result = target.isGnosia ? 'Gnosia' : 'Human';
+  // Store investigation result (Follower shows as Human)
+  const result = (target.isGnosia && !target.isFollower) ? 'Gnosia' : 'Human';
   if (!game.investigations.has(engineerId)) {
     game.investigations.set(engineerId, new Map());
   }
@@ -517,8 +538,8 @@ function doctorInvestigate(roomCode, doctorId, targetPlayerId) {
     return { success: false, error: 'Target must be dead' };
   }
 
-  // Store investigation result
-  const result = target.isGnosia ? 'Gnosia' : 'Human';
+  // Store investigation result (Follower shows as Human)
+  const result = (target.isGnosia && !target.isFollower) ? 'Gnosia' : 'Human';
   if (!game.investigations.has(doctorId)) {
     game.investigations.set(doctorId, new Map());
   }
@@ -583,15 +604,15 @@ function guardianProtect(roomCode, guardianId, targetPlayerId) {
 function checkWinCondition(game) {
   const alivePlayers = Array.from(game.players.values()).filter(p => p.isAlive);
   const aliveGnosia = alivePlayers.filter(p => p.isGnosia).length;
-  const aliveCrew = alivePlayers.length - aliveGnosia;
+  const aliveCrew = alivePlayers.filter(p => !p.isGnosia && !p.isFollower).length;
 
   if (aliveGnosia === 0) {
     return { gameOver: true, winner: 'crew' };
   }
   if (aliveGnosia >= aliveCrew) {
-    // When Gnosia wins, mark all surviving crew as eliminated
+    // When Gnosia wins, mark all surviving crew as eliminated (but not Follower)
     game.players.forEach(player => {
-      if (!player.isGnosia && player.isAlive) {
+      if (!player.isGnosia && !player.isFollower && player.isAlive) {
         player.isAlive = false;
       }
     });
@@ -607,7 +628,8 @@ function getGameState(game) {
       name: p.name,
       role: p.role,
       isAlive: p.isAlive,
-      isGnosia: p.isGnosia
+      isGnosia: p.isGnosia,
+      isFollower: p.isFollower
     })),
     round: game.round
   };
