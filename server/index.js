@@ -308,9 +308,11 @@ io.on('connection', (socket) => {
         if (phase === 'debate') {
           // Move to voting
           const updateResult = gameManager.updatePhase(roomCode, 'voting');
+          const gameState = gameManager.getGameState(roomCode);
           io.to(roomCode).emit('phaseChange', { 
             phase: 'voting',
-            alivePlayers: result.alivePlayers
+            alivePlayers: result.alivePlayers,
+            players: gameState.players
           });
         }
       }

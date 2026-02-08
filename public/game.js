@@ -683,11 +683,15 @@ socket.on('gameStarted', ({ phase, players, round }) => {
     }
 });
 
-socket.on('phaseChange', ({ phase, round }) => {
+socket.on('phaseChange', ({ phase, round, players }) => {
     if (round) {
         document.getElementById('round-number').textContent = round;
     }
-    // Don't reset ready status here - server handles it
+    
+    // Update players if provided (includes cleared ready status)
+    if (players) {
+        gameState.players = players;
+    }
     
     // Clear vote results when starting new debate phase
     if (phase === 'debate') {

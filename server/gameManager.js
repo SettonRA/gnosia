@@ -350,10 +350,9 @@ function gnosiaEliminate(roomCode, gnosiaId, targetPlayerId) {
     return { success: false, error: 'Only alive Gnosia can eliminate' };
   }
   
-  // Check if it's this Gnosia player's turn
-  const warpInfo = getWarpInfo(roomCode);
-  if (warpInfo.currentGnosiaPlayer !== gnosiaId) {
-    return { success: false, error: 'Not your turn to eliminate' };
+  // Check if Gnosia elimination has already been completed
+  if (game.warpActions.gnosiaElimination) {
+    return { success: false, error: 'Gnosia elimination already completed' };
   }
 
   const target = game.players.get(targetPlayerId);
