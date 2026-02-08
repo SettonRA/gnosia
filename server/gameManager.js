@@ -890,6 +890,16 @@ function attemptReconnect(roomCode, playerName, newSocketId) {
     game.host = newSocketId;
   }
   
+  // Update Gnosia elimination votes if in warp phase and this player was targeted
+  if (game.phase === 'warp') {
+    // Update any Gnosia votes that targeted the old socket ID
+    for (const [gnosiaId, targetId] of game.warpActions.gnosiaElimination.entries()) {
+      if (targetId === oldSocketId) {
+        game.warpActions.gnosiaElimination.set(gnosiaId, newSocketId);
+      }
+    }
+  }
+  
   // Prepare role data for reconnected player
   const roleData = {
     role: player.role,
