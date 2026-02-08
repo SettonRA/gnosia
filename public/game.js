@@ -506,6 +506,23 @@ document.getElementById('new-game-btn').addEventListener('click', () => {
     socket.emit('restartGame', gameState.roomCode);
 });
 
+// Game Control Buttons
+document.getElementById('leave-game-btn').addEventListener('click', () => {
+    if (confirm('Are you sure you want to leave the game? You will not be able to rejoin this game.')) {
+        socket.emit('leaveGame', { roomCode: gameState.roomCode });
+        showNotification('You have left the game');
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
+    }
+});
+
+document.getElementById('return-lobby-btn-game').addEventListener('click', () => {
+    if (confirm('Return all players to lobby? The current game will end.')) {
+        socket.emit('returnToLobby', gameState.roomCode);
+    }
+});
+
 // Socket Event Handlers
 socket.on('roomCreated', ({ roomCode, playerName }) => {
     gameState.roomCode = roomCode;
@@ -680,6 +697,11 @@ socket.on('gameStarted', ({ phase, players, round }) => {
         updateGamePlayerList(players);
         updatePhase(phase);
         showNotification('Game started!');
+        
+        // Show Return to Lobby button if host
+        if (gameState.isHost) {
+            document.getElementById('return-lobby-btn-game').classList.remove('hidden');
+        }
     }
 });
 
@@ -825,6 +847,67 @@ socket.on('gameRestarted', ({ players }) => {
     showScreen('lobby');
     updatePlayerList(players);
     showNotification('New game started! Waiting for host...');
+    
+    // Reset game state
+    gameState.role = null;
+    gameState.isGnosia = false;
+    gameState.isFollower = false;
+    gameState.phase = 'lobby';
+    gameState.selectedVote = null;
+    gameState.isEngineer = false;
+    gameState.isDoctor = false;
+    gameState.isGuardian = false;
+    gameState.investigations = new Map();
+    gameState.voteResults = [];
+    gameState.gnosiaPlayerIds = [];
+    gameState.totalGnosiaCount = 0;
+    
+    // Reset role display styling
+    const roleDisplay = document.getElementById('role-display');
+    roleDisplay.classList.remove('gnosia');
+    roleDisplay.style.background = '';
+    document.getElementById('player-role').textContent = 'Waiting...';
+    
+    // Reset role counts
+    document.getElementById('gnosia-count').textContent = '0';
+    document.getElementById('engineer-count').textContent = '0';
+    document.getElementById('doctor-count').textContent = '0';
+    document.getElementById('guardian-count').textContent = '0';
+    
+    // Show start button for host
+    if (gameState.isHost) {
+        document.getElementById('start-game-btn').classList.remove('hidden');
+    }
+});
+
+socket.on('playerLeft', ({ playerName, players, newHost }) => {
+    showNotification(`${playerName} has left the game`);
+    gameState.players = players;
+    updatePlayerList(players);
+    
+    if (newHost) {
+        if (newHost.id === socket.id) {
+            gameState.isHost = true;
+            showNotification(`You are now the host!`);
+            document.getElementById('return-lobby-btn-game').classList.remove('hidden');
+        } else {
+            showNotification(`${newHost.name} is now the host`);
+        }
+    }
+});
+
+socket.on('leftGame', ({ message }) => {
+    showNotification(message);
+    setTimeout(() => {
+        window.location.reload();
+    }, 1500);
+});
+
+socket.on('returnedToLobby', ({ players }) => {
+    gameState.players = players;
+    showScreen('lobby');
+    updatePlayerList(players);
+    showNotification('Returned to lobby!');
     
     // Reset game state
     gameState.role = null;

@@ -47,7 +47,8 @@ function createRoom(socketId, playerName, isPublic = false) {
       gnosiaElimination: new Map() // Map of gnosiaId -> targetPlayerId
     },
     investigations: new Map(), // Store investigation results per player
-    playerNameToId: new Map([[playerName.toLowerCase(), socketId]]) // Map names to IDs for reconnection
+    playerNameToId: new Map([[playerName.toLowerCase(), socketId]]), // Map names to IDs for reconnection
+    leftPlayers: new Set() // Track players who voluntarily left (can't rejoin)
   });
   return roomCode;
 }
@@ -845,6 +846,33 @@ function attemptReconnect(roomCode, playerName, newSocketId) {
     return { success: false, error: 'Room not found' };
   }
   
+  // Check if player has left the game - rejoin as spectator
+  if (game.leftPlayers.has(playerName.toLowerCase())) {
+    // Remove from leftPlayers and add as spectator
+    game.leftPlayers.delete(playerName.toLowerCase());
+    
+    // Remove from players if still there
+    const oldSocketId = game.playerNameToId.get(playerName.toLowerCase());
+    if (oldSocketId && game.players.has(oldSocketId)) {
+      game.players.delete(oldSocketId);
+    }
+    
+    // Add as spectator
+    game.spectators.set(newSocketId, {
+      id: newSocketId,
+      name: playerName
+    });
+    game.playerNameToId.set(playerName.toLowerCase(), newSocketId);
+    
+    return {
+      success: true,
+      isSpectator: true,
+      roomCode,
+      isHost: false,
+      gameState: getGameState(roomCode)
+    };
+  }
+  
   // Find the disconnected player by name
   const oldSocketId = game.playerNameToId.get(playerName.toLowerCase());
   if (!oldSocketId || !game.players.has(oldSocketId)) {
@@ -989,6 +1017,117 @@ setInterval(() => {
   }
 }, 60000); // Check every minute
 
+function leaveGame(roomCode, socketId) {
+  const game = games.get(roomCode);
+  if (!game) {
+    return { success: false, error: 'Room not found' };
+  }
+
+  const player = game.players.get(socketId);
+  if (!player) {
+    return { success: false, error: 'Player not found' };
+  }
+
+  // Mark player as left (can't rejoin)
+  game.leftPlayers.add(player.name.toLowerCase());
+  
+  // Mark player as dead/frozen
+  player.isAlive = false;
+  const wasHost = game.host === socketId;
+  
+  // Check if all players have left or disconnected
+  const activePlayers = Array.from(game.players.values()).filter(p => p.isAlive && !p.disconnected);
+  
+  if (activePlayers.length === 0) {
+    // Game is abandoned - silently delete it
+    games.delete(roomCode);
+    return {
+      success: true,
+      playerName: player.name,
+      wasHost
+    };
+  }
+  
+  // Transfer host if needed
+  let newHost = null;
+  if (wasHost) {
+    // Pick a random active player as new host
+    const activePlayer = activePlayers[Math.floor(Math.random() * activePlayers.length)];
+    game.host = activePlayer.id;
+    newHost = {
+      id: activePlayer.id,
+      name: activePlayer.name
+    };
+  }
+  
+  // Check win condition
+  const { gameOver, winner } = checkWinCondition(game);
+  
+  return {
+    success: true,
+    playerName: player.name,
+    wasHost,
+    newHost,
+    players: Array.from(game.players.values()).map(p => ({
+      id: p.id,
+      name: p.name,
+      isAlive: p.isAlive,
+      disconnected: p.disconnected || false
+    })),
+    gameOver,
+    winner,
+    finalState: gameOver ? getGameState(roomCode) : null
+  };
+}
+
+function returnToLobby(roomCode, requesterId) {
+  const game = games.get(roomCode);
+  if (!game) {
+    return { success: false, error: 'Room not found' };
+  }
+  if (game.host !== requesterId) {
+    return { success: false, error: 'Only host can return to lobby' };
+  }
+
+  // Reset all players
+  game.players.forEach(player => {
+    player.isAlive = true;
+    player.role = null;
+    player.isGnosia = false;
+    player.ready = false;
+  });
+  
+  // Clear spectators and left players
+  game.spectators.clear();
+  game.leftPlayers.clear();
+  
+  // Reset game state
+  game.started = false;
+  game.phase = 'lobby';
+  game.round = 0;
+  game.votes.clear();
+  game.investigations.clear();
+  game.warpActions = {
+    engineerInvestigation: null,
+    doctorInvestigation: null,
+    guardianProtection: null,
+    gnosiaElimination: new Map()
+  };
+  game.helperRoles = {
+    engineer: [],
+    doctor: [],
+    guardian: []
+  };
+
+  return {
+    success: true,
+    players: Array.from(game.players.values()).map(p => ({
+      id: p.id,
+      name: p.name
+    }))
+  };
+}
+
 module.exports = {
   createRoom,
   joinRoom,
@@ -1006,5 +1145,7 @@ module.exports = {
   restartGame,
   handleDisconnect,
   getGamesCount,
-  getPublicGames
+  getPublicGames,
+  leaveGame,
+  returnToLobby
 };

@@ -336,6 +336,46 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Leave Game
+  socket.on('leaveGame', (roomCode) => {
+    const result = gameManager.leaveGame(roomCode, socket.id);
+    if (result.success) {
+      // Notify all players about the departure
+      io.to(roomCode).emit('playerLeft', {
+        playerName: result.playerName,
+        players: result.players,
+        newHost: result.newHost
+      });
+      
+      // Check if game ended due to departure
+      if (result.gameOver) {
+        io.to(roomCode).emit('gameOver', {
+          winner: result.winner,
+          finalState: result.finalState
+        });
+      }
+      
+      // Confirm to the leaving player
+      socket.emit('leftGame', {
+        message: 'You have left the game. You can rejoin as a spectator.'
+      });
+    } else {
+      socket.emit('error', { message: result.error });
+    }
+  });
+
+  // Return to Lobby
+  socket.on('returnToLobby', (roomCode) => {
+    const result = gameManager.returnToLobby(roomCode, socket.id);
+    if (result.success) {
+      io.to(roomCode).emit('returnedToLobby', {
+        players: result.players
+      });
+    } else {
+      socket.emit('error', { message: result.error });
+    }
+  });
+
   // Disconnect
   socket.on('disconnect', () => {
     const result = gameManager.handleDisconnect(socket.id);
