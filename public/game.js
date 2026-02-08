@@ -640,7 +640,7 @@ socket.on('roleAssigned', ({ role, isGnosia, isFollower, gnosiaPlayers, helperRo
     }
     
     // Update role display color based on role
-    if (isGnosia) {
+    if (isGnosia || isFollower) {
         roleDisplay.style.background = 'linear-gradient(135deg, rgba(220, 38, 38, 0.3), rgba(153, 27, 27, 0.3))';
     } else if (isEngineer || isDoctor || isGuardian) {
         roleDisplay.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(22, 163, 74, 0.3))';
