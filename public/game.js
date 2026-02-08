@@ -92,7 +92,7 @@ document.getElementById('create-room-btn').addEventListener('click', () => {
 
 document.getElementById('join-room-btn').addEventListener('click', () => {
     showScreen('room');
-    document.getElementById('room-title').textContent = 'Join Room';
+    document.getElementById('room-title').textContent = 'Join Game';
     document.getElementById('room-code-input').classList.remove('hidden');
     document.getElementById('public-checkbox-container').classList.add('hidden');
     document.getElementById('public-games-list').classList.remove('hidden');
