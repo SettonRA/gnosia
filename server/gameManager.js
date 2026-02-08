@@ -379,7 +379,7 @@ function checkWarpActionsComplete(game) {
   // Check if all alive helper roles and Gnosia have acted
   const alivePlayers = Array.from(game.players.values()).filter(p => p.isAlive);
   
-  // Check if Gnosia has acted
+  // Check if Gnosia has acted (wait even if Gnosia disconnected - they can reconnect)
   if (!game.warpActions.gnosiaElimination) {
     return false;
   }
@@ -651,7 +651,8 @@ function getGameState(game) {
       isAlive: p.isAlive,
       isGnosia: p.isGnosia,
       isFollower: p.isFollower,
-      disconnected: p.disconnected || false
+      disconnected: p.disconnected || false,
+      ready: p.ready || false
     })),
     round: game.round
   };
@@ -915,6 +916,17 @@ function attemptReconnect(roomCode, playerName, newSocketId) {
     isGuardian: game.helperRoles.guardian.includes(newSocketId)
   };
   
+  // Restore investigation results if this player investigated anyone
+  if (game.investigations.has(oldSocketId)) {
+    const playerInvestigations = game.investigations.get(oldSocketId);
+    game.investigations.delete(oldSocketId);
+    game.investigations.set(newSocketId, playerInvestigations);
+    roleData.investigations = Array.from(playerInvestigations.entries()).map(([targetId, result]) => ({
+      targetId,
+      result
+    }));
+  }
+  
   // Get Gnosia players if this player is Gnosia
   if (player.isGnosia) {
     const gnosiaPlayers = Array.from(game.players.values())
@@ -930,6 +942,16 @@ function attemptReconnect(roomCode, playerName, newSocketId) {
     doctor: game.helperRoles.doctor.length,
     guardian: game.helperRoles.guardian.length
   };
+  
+  // Include warp action status if in warp phase
+  if (game.phase === 'warp') {
+    roleData.hasActed = {
+      engineer: game.warpActions.engineerInvestigation === newSocketId,
+      doctor: game.warpActions.doctorInvestigation === newSocketId,
+      guardian: game.warpActions.guardianProtection && game.warpActions.guardianProtection.guardianId === newSocketId,
+      gnosia: !!game.warpActions.gnosiaElimination
+    };
+  }
   
   return {
     success: true,

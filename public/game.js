@@ -320,23 +320,30 @@ function updatePhase(phase, instructions) {
         
         if (gameState.isSpectator) {
             instructionText.textContent = 'Spectating the warp phase...';
-        } else if (gameState.isEngineer && isPlayerAlive) {
+        } else if (gameState.isEngineer && isPlayerAlive && !gameState.hasActed?.engineer) {
             instructionText.textContent = 'You are the Engineer! Select an alive player to investigate...';
             document.getElementById('voting-header').textContent = 'Select a player to investigate';
             votingSection.classList.remove('hidden'); // Show for selection
             showEngineerOptions();
-        } else if (gameState.isDoctor && isPlayerAlive) {
+        } else if (gameState.isDoctor && isPlayerAlive && !gameState.hasActed?.doctor) {
             instructionText.textContent = 'You are the Doctor! Select a dead player to investigate...';
             document.getElementById('voting-header').textContent = 'Select a dead player to investigate';
             votingSection.classList.remove('hidden'); // Show for selection
             showDoctorOptions();
-        } else if (gameState.isGuardian && isPlayerAlive) {
+        } else if (gameState.isGuardian && isPlayerAlive && !gameState.hasActed?.guardian) {
             instructionText.textContent = 'You are the Guardian! Select a player to protect...';
             document.getElementById('voting-header').textContent = 'Select a player to protect';
             votingSection.classList.remove('hidden'); // Show for selection
             showGuardianOptions();
-        } else if (gameState.isGnosia && isPlayerAlive) {
+        } else if (gameState.isGnosia && isPlayerAlive && !gameState.hasActed?.gnosia) {
             instructionText.textContent = 'Select a crew member to eliminate during the warp...';
+            // Show Gnosia elimination UI if they haven't acted yet
+            const alivePlayers = gameState.players.filter(p => p.isAlive);
+            showGnosiaEliminationOptions(alivePlayers);
+        } else if ((gameState.isEngineer || gameState.isDoctor || gameState.isGuardian) && isPlayerAlive) {
+            instructionText.textContent = 'Waiting for other players to complete their actions...';
+        } else if (gameState.isGnosia && isPlayerAlive) {
+            instructionText.textContent = 'Waiting for the warp to complete...';
         } else {
             instructionText.textContent = 'The ship is warping. Gnosia are selecting their target...';
         }
@@ -397,6 +404,10 @@ function showGnosiaEliminationOptions(alivePlayers) {
             btn.className = 'vote-btn';
             btn.textContent = player.name;
             btn.onclick = () => {
+                // Mark as having acted
+                if (!gameState.hasActed) gameState.hasActed = {};
+                if (gameState.isGnosia) gameState.hasActed.gnosia = true;
+                
                 socket.emit('gnosiaEliminate', { 
                     roomCode: gameState.roomCode, 
                     targetPlayerId: player.id 
@@ -676,8 +687,7 @@ socket.on('phaseChange', ({ phase, round }) => {
     if (round) {
         document.getElementById('round-number').textContent = round;
     }
-    // Reset ready status for all players
-    gameState.players.forEach(p => p.ready = false);
+    // Don't reset ready status here - server handles it
     
     // Clear vote results when starting new debate phase
     if (phase === 'debate') {
@@ -738,6 +748,11 @@ socket.on('investigationResult', ({ targetId, targetName, result }) => {
     // Store the investigation result
     gameState.investigations.set(targetId, result);
     
+    // Mark as having acted
+    if (!gameState.hasActed) gameState.hasActed = {};
+    if (gameState.isEngineer) gameState.hasActed.engineer = true;
+    if (gameState.isDoctor) gameState.hasActed.doctor = true;
+    
     // Update the player list to show the investigation
     updateGamePlayerList(gameState.players);
     
@@ -745,6 +760,10 @@ socket.on('investigationResult', ({ targetId, targetName, result }) => {
 });
 
 socket.on('protectionConfirmed', ({ targetId, targetName }) => {
+    // Mark as having acted
+    if (!gameState.hasActed) gameState.hasActed = {};
+    if (gameState.isGuardian) gameState.hasActed.guardian = true;
+    
     showNotification(`Protection set for ${targetName}`);
 });
 
@@ -846,6 +865,15 @@ socket.on('reconnected', ({ roomCode, isHost, roleData, gameState: serverGameSta
     gameState.isDoctor = roleData.isDoctor;
     gameState.isGuardian = roleData.isGuardian;
     gameState.isSpectator = false;
+    gameState.hasActed = roleData.hasActed || {};
+    
+    // Restore investigation results if any
+    if (roleData.investigations && roleData.investigations.length > 0) {
+        gameState.investigations = new Map();
+        roleData.investigations.forEach(({ targetId, result }) => {
+            gameState.investigations.set(targetId, result);
+        });
+    }
     
     // Show game screen
     showScreen('game');
