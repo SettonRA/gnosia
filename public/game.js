@@ -509,7 +509,7 @@ document.getElementById('new-game-btn').addEventListener('click', () => {
 // Game Control Buttons
 document.getElementById('leave-game-btn').addEventListener('click', () => {
     if (confirm('Are you sure you want to leave the game? You will not be able to rejoin this game.')) {
-        socket.emit('leaveGame', { roomCode: gameState.roomCode });
+        socket.emit('leaveGame', gameState.roomCode);
         showNotification('You have left the game');
         setTimeout(() => {
             window.location.reload();

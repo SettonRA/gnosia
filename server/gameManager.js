@@ -1039,12 +1039,13 @@ function leaveGame(roomCode, socketId) {
   const activePlayers = Array.from(game.players.values()).filter(p => p.isAlive && !p.disconnected);
   
   if (activePlayers.length === 0) {
-    // Game is abandoned - silently delete it
+    // Game is abandoned - delete it
     games.delete(roomCode);
     return {
       success: true,
       playerName: player.name,
-      wasHost
+      wasHost,
+      gameAbandoned: true
     };
   }
   
