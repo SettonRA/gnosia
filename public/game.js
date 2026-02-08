@@ -82,7 +82,7 @@ function showNotification(message) {
 // Landing Screen
 document.getElementById('create-room-btn').addEventListener('click', () => {
     showScreen('room');
-    document.getElementById('room-title').textContent = 'Create Room';
+    document.getElementById('room-title').textContent = 'Host Game';
     document.getElementById('room-code-input').classList.add('hidden');
     document.getElementById('public-checkbox-container').classList.remove('hidden');
     document.getElementById('public-games-list').classList.add('hidden');
