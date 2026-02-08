@@ -226,7 +226,8 @@ function updateGamePlayerList(players) {
         
         playerEl.innerHTML = `
             <strong>${player.name}${voteCount}${gnosiaLabel}${investigationLabel}${roleLabel}</strong>
-            ${player.isAlive ? '<span style="color: #4ade80;">● Alive</span>' : '<span style="color: #f87171;">● Frozen/Dead</span>'}
+            ${player.disconnected ? '<span style="color: #fbbf24;">● Disconnected</span>' : 
+              player.isAlive ? '<span style="color: #4ade80;">● Alive</span>' : '<span style="color: #f87171;">● Frozen/Dead</span>'}
         `;
         container.appendChild(playerEl);
     });
@@ -831,3 +832,63 @@ socket.on('gameRestarted', ({ players }) => {
         document.getElementById('start-game-btn').classList.remove('hidden');
     }
 });
+
+socket.on('reconnected', ({ roomCode, isHost, roleData, gameState: serverGameState }) => {
+    gameState.roomCode = roomCode;
+    gameState.isHost = isHost;
+    gameState.players = serverGameState.players;
+    gameState.role = roleData.role;
+    gameState.isGnosia = roleData.isGnosia;
+    gameState.isFollower = roleData.isFollower;
+    gameState.isEngineer = roleData.isEngineer;
+    gameState.isDoctor = roleData.isDoctor;
+    gameState.isGuardian = roleData.isGuardian;
+    gameState.isSpectator = false;
+    
+    // Show game screen
+    showScreen('game');
+    document.getElementById('round-number').textContent = serverGameState.round;
+    
+    // Restore role display
+    document.getElementById('player-role').textContent = gameState.isFollower ? 'Follower' : roleData.role;
+    const roleDisplay = document.getElementById('role-display');
+    roleDisplay.classList.remove('gnosia');
+    
+    if (gameState.isGnosia || gameState.isFollower) {
+        roleDisplay.classList.add('gnosia');
+        roleDisplay.style.background = 'linear-gradient(135deg, rgba(220, 38, 38, 0.3), rgba(153, 27, 27, 0.3))';
+    } else if (gameState.isEngineer || gameState.isDoctor || gameState.isGuardian) {
+        roleDisplay.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(22, 163, 74, 0.3))';
+    } else {
+        roleDisplay.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.3))';
+    }
+    
+    // Restore Gnosia info if applicable
+    if (roleData.gnosiaPlayers) {
+        gameState.gnosiaPlayerIds = roleData.gnosiaPlayers.map(p => p.id);
+        gameState.totalGnosiaCount = roleData.gnosiaPlayers.length;
+    } else if (roleData.helperRoleCounts) {
+        gameState.totalGnosiaCount = roleData.helperRoleCounts.gnosia;
+    }
+    
+    // Update role counts
+    if (roleData.helperRoleCounts) {
+        document.getElementById('gnosia-count').textContent = roleData.helperRoleCounts.gnosia || 0;
+        document.getElementById('engineer-count').textContent = roleData.helperRoleCounts.engineer || 0;
+        document.getElementById('doctor-count').textContent = roleData.helperRoleCounts.doctor || 0;
+        document.getElementById('guardian-count').textContent = roleData.helperRoleCounts.guardian || 0;
+    }
+    
+    // Update player list and phase
+    updateGamePlayerList(serverGameState.players);
+    updatePhase(serverGameState.phase);
+    
+    showNotification('Reconnected successfully!');
+});
+
+socket.on('playerReconnected', ({ playerName, players }) => {
+    gameState.players = players;
+    updateGamePlayerList(players);
+    showNotification(`${playerName} reconnected`);
+});
+

@@ -25,7 +25,9 @@ function createRoom(socketId, playerName, isPublic = false) {
       isAlive: true,
       role: null,
       isGnosia: false,
-      ready: false
+      ready: false,
+      disconnected: false,
+      disconnectTime: null
     }]]),
     spectators: new Map(),
     phase: 'lobby',
@@ -45,7 +47,8 @@ function createRoom(socketId, playerName, isPublic = false) {
       guardianProtection: null,
       gnosiaElimination: null
     },
-    investigations: new Map() // Store investigation results per player
+    investigations: new Map(), // Store investigation results per player
+    playerNameToId: new Map([[playerName.toLowerCase(), socketId]]) // Map names to IDs for reconnection
   });
   return roomCode;
 }
@@ -93,12 +96,14 @@ function joinRoom(roomCode, socketId, playerName) {
     isAlive: true,
     role: null,
     isGnosia: false,
-    ready: false
+    ready: false,
+    disconnected: false,
+    disconnectTime: null
   });
+  game.playerNameToId.set(playerName.toLowerCase(), socketId);
 
   return {
     success: true,
-    isSpectator: false,
     players: Array.from(game.players.values()).map(p => ({
       id: p.id,
       name: p.name
@@ -630,7 +635,8 @@ function getGameState(game) {
       role: p.role,
       isAlive: p.isAlive,
       isGnosia: p.isGnosia,
-      isFollower: p.isFollower
+      isFollower: p.isFollower,
+      disconnected: p.disconnected || false
     })),
     round: game.round
   };
@@ -781,20 +787,30 @@ function handleDisconnect(socketId) {
     if (game.players.has(socketId)) {
       const player = game.players.get(socketId);
       const playerName = player.name;
-      game.players.delete(socketId);
       
-      if (game.players.size === 0) {
-        games.delete(roomCode);
+      // Mark player as disconnected instead of deleting
+      player.disconnected = true;
+      player.disconnectTime = Date.now();
+      
+      // If game hasn't started and all players are disconnected, delete the room
+      if (!game.started) {
+        const allDisconnected = Array.from(game.players.values()).every(p => p.disconnected);
+        if (allDisconnected) {
+          games.delete(roomCode);
+          return { roomCode, playerName, players: [], roomDeleted: true };
+        }
       }
       
       return {
         roomCode,
         playerName,
-        players: Array.from(game.players.values()).map(p => ({
-          id: p.id,
-          name: p.name,
-          isAlive: p.isAlive
-        }))
+        players: Array.from(game.players.values())
+          .map(p => ({
+            id: p.id,
+            name: p.name,
+            isAlive: p.isAlive,
+            disconnected: p.disconnected || false
+          }))
       };
     }
   }
@@ -822,9 +838,129 @@ function getPublicGames() {
   return publicGames;
 }
 
+function attemptReconnect(roomCode, playerName, newSocketId) {
+  const game = games.get(roomCode);
+  if (!game) {
+    return { success: false, error: 'Room not found' };
+  }
+  
+  // Find the disconnected player by name
+  const oldSocketId = game.playerNameToId.get(playerName.toLowerCase());
+  if (!oldSocketId || !game.players.has(oldSocketId)) {
+    return { success: false, error: 'Player not found in this room' };
+  }
+  
+  const player = game.players.get(oldSocketId);
+  
+  // Check if player was disconnected
+  if (!player.disconnected) {
+    return { success: false, error: 'Player is already connected' };
+  }
+  
+  // Check if too much time has passed (5 minutes)
+  const RECONNECT_TIMEOUT = 5 * 60 * 1000;
+  if (Date.now() - player.disconnectTime > RECONNECT_TIMEOUT) {
+    return { success: false, error: 'Reconnection timeout expired' };
+  }
+  
+  // Transfer player data to new socket ID
+  player.id = newSocketId;
+  player.disconnected = false;
+  player.disconnectTime = null;
+  
+  // Update maps
+  game.players.delete(oldSocketId);
+  game.players.set(newSocketId, player);
+  game.playerNameToId.set(playerName.toLowerCase(), newSocketId);
+  
+  // Update helper roles if this player is one
+  if (game.helperRoles.engineer.includes(oldSocketId)) {
+    game.helperRoles.engineer = game.helperRoles.engineer.map(id => id === oldSocketId ? newSocketId : id);
+  }
+  if (game.helperRoles.doctor.includes(oldSocketId)) {
+    game.helperRoles.doctor = game.helperRoles.doctor.map(id => id === oldSocketId ? newSocketId : id);
+  }
+  if (game.helperRoles.guardian.includes(oldSocketId)) {
+    game.helperRoles.guardian = game.helperRoles.guardian.map(id => id === oldSocketId ? newSocketId : id);
+  }
+  
+  // Update host if needed
+  if (game.host === oldSocketId) {
+    game.host = newSocketId;
+  }
+  
+  // Prepare role data for reconnected player
+  const roleData = {
+    role: player.role,
+    isGnosia: player.isGnosia,
+    isFollower: player.isFollower || false,
+    isEngineer: game.helperRoles.engineer.includes(newSocketId),
+    isDoctor: game.helperRoles.doctor.includes(newSocketId),
+    isGuardian: game.helperRoles.guardian.includes(newSocketId)
+  };
+  
+  // Get Gnosia players if this player is Gnosia
+  if (player.isGnosia) {
+    const gnosiaPlayers = Array.from(game.players.values())
+      .filter(p => p.isGnosia)
+      .map(p => ({ id: p.id, name: p.name }));
+    roleData.gnosiaPlayers = gnosiaPlayers;
+  }
+  
+  // Get helper role counts
+  roleData.helperRoleCounts = {
+    gnosia: Array.from(game.players.values()).filter(p => p.isGnosia).length,
+    engineer: game.helperRoles.engineer.length,
+    doctor: game.helperRoles.doctor.length,
+    guardian: game.helperRoles.guardian.length
+  };
+  
+  return {
+    success: true,
+    reconnected: true,
+    isHost: game.host === newSocketId,
+    roleData,
+    gameState: {
+      phase: game.phase,
+      round: game.round,
+      players: Array.from(game.players.values()).map(p => ({
+        id: p.id,
+        name: p.name,
+        isAlive: p.isAlive,
+        role: p.role,
+        isFollower: p.isFollower || false
+      }))
+    }
+  };
+}
+
+// Clean up disconnected players after timeout
+setInterval(() => {
+  const RECONNECT_TIMEOUT = 5 * 60 * 1000;
+  const now = Date.now();
+  
+  for (const [roomCode, game] of games.entries()) {
+    let playersRemoved = false;
+    
+    for (const [socketId, player] of game.players.entries()) {
+      if (player.disconnected && now - player.disconnectTime > RECONNECT_TIMEOUT) {
+        game.players.delete(socketId);
+        game.playerNameToId.delete(player.name.toLowerCase());
+        playersRemoved = true;
+      }
+    }
+    
+    // If all players are gone, delete the room
+    if (game.players.size === 0) {
+      games.delete(roomCode);
+    }
+  }
+}, 60000); // Check every minute
+
 module.exports = {
   createRoom,
   joinRoom,
+  attemptReconnect,
   startGame,
   submitVote,
   gnosiaEliminate,

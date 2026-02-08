@@ -68,6 +68,36 @@ io.on('connection', (socket) => {
   });
 
   socket.on('joinRoom', ({ roomCode, playerName }) => {
+    // First try to reconnect if player was disconnected
+    const reconnectResult = gameManager.attemptReconnect(roomCode, playerName, socket.id);
+    
+    if (reconnectResult.success) {
+      socket.join(roomCode);
+      
+      // Send reconnection confirmation with full game state
+      socket.emit('reconnected', {
+        roomCode,
+        isHost: reconnectResult.isHost,
+        roleData: reconnectResult.roleData,
+        gameState: reconnectResult.gameState
+      });
+      
+      // Notify other players
+      io.to(roomCode).emit('playerReconnected', {
+        playerName,
+        players: reconnectResult.gameState.players.map(p => ({
+          id: p.id,
+          name: p.name,
+          isAlive: p.isAlive,
+          disconnected: p.disconnected || false
+        }))
+      });
+      
+      console.log(`${playerName} reconnected to room: ${roomCode}`);
+      return;
+    }
+    
+    // If reconnection failed, try normal join
     const result = gameManager.joinRoom(roomCode, socket.id, playerName);
     if (result.success) {
       socket.join(roomCode);
