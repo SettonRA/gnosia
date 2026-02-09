@@ -768,10 +768,10 @@ function restartGame(roomCode, requesterId) {
   
   // Reset warp actions
   game.warpActions = {
-    engineerInvestigation: false,
-    doctorInvestigation: false,
+    engineerInvestigation: null,
+    doctorInvestigation: null,
     guardianProtection: null,
-    gnosiaElimination: null
+    gnosiaElimination: new Map()
   };
 
   return {
