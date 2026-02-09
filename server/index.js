@@ -181,6 +181,7 @@ io.on('connection', (socket) => {
         io.to(roomCode).emit('votingComplete', {
           eliminatedPlayer: result.eliminatedPlayer,
           voteResults: result.voteResults,
+          allVotes: result.allVotes,
           players: result.players
         });
 
