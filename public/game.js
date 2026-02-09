@@ -474,9 +474,9 @@ function showEngineerOptions() {
     const container = document.getElementById('vote-options');
     container.innerHTML = '';
     
-    // Show alive players for investigation
+    // Show alive players for investigation (excluding already investigated)
     const alivePlayers = gameState.players.filter(player => 
-        player.isAlive && player.id !== socket.id
+        player.isAlive && player.id !== socket.id && !gameState.investigations.has(player.id)
     ).sort((a, b) => a.name.localeCompare(b.name));
     
     alivePlayers.forEach(player => {
@@ -498,9 +498,9 @@ function showDoctorOptions() {
     const container = document.getElementById('vote-options');
     container.innerHTML = '';
     
-    // Show dead players for investigation
+    // Show dead players for investigation (excluding already investigated)
     const deadPlayers = gameState.players.filter(player => 
-        !player.isAlive
+        !player.isAlive && !gameState.investigations.has(player.id)
     ).sort((a, b) => a.name.localeCompare(b.name));
     
     if (deadPlayers.length === 0) {
