@@ -130,6 +130,7 @@
                 <div class="game-info-buttons">
                     <button id="story-btn-game" class="btn btn-link">Story</button>
                     <button id="rules-btn-game" class="btn btn-link">Rules</button>
+                    <button id="vote-results-btn-game" class="btn btn-link">Vote Results</button>
                 </div>
             </div>
             
@@ -165,6 +166,21 @@
                     <p>You managed to get a ride on a refugee ship escaping from a planet being ravaged by the Gnosia. However, during the trip to another planet, the ship's computer <strong>LeVi</strong> detects Gnosia infection on board the ship and following protocol, instructs the passengers and crew to deduce which one of them is the Gnosia and put them into cold sleep.</p>
                     
                     <p><strong>If they fail to do so, the ship is forced to self destruct.</strong></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vote Results Modal -->
+        <div id="vote-results-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Vote Results History</h2>
+                    <button id="close-vote-results" class="btn-close">×</button>
+                </div>
+                <div class="modal-body">
+                    <div id="vote-results-content">
+                        <!-- Vote results will be populated here -->
+                    </div>
                 </div>
             </div>
         </div>

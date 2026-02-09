@@ -11,7 +11,7 @@ let gameState = {
     isHost: false,
     players: [],
     selectedVote: null,
-    voteResults: [],
+    voteResultsHistory: [], // Array of rounds, each containing vote details
     isSpectator: false,
     gnosiaPlayerIds: [],
     totalGnosiaCount: 0,
@@ -65,6 +65,59 @@ storyModal.addEventListener('click', (e) => {
         storyModal.classList.add('hidden');
     }
 });
+
+// Vote Results Modal
+const voteResultsModal = document.getElementById('vote-results-modal');
+document.getElementById('vote-results-btn-game').addEventListener('click', () => {
+    updateVoteResultsDisplay();
+    voteResultsModal.classList.remove('hidden');
+});
+document.getElementById('close-vote-results').addEventListener('click', () => {
+    voteResultsModal.classList.add('hidden');
+});
+// Click outside modal to close
+voteResultsModal.addEventListener('click', (e) => {
+    if (e.target === voteResultsModal) {
+        voteResultsModal.classList.add('hidden');
+    }
+});
+
+function updateVoteResultsDisplay() {
+    const container = document.getElementById('vote-results-content');
+    if (gameState.voteResultsHistory.length === 0) {
+        container.innerHTML = '<p style="color: #9ca3af; text-align: center; padding: 20px;">No votes have been cast yet.</p>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    gameState.voteResultsHistory.forEach((round, index) => {
+        const roundDiv = document.createElement('div');
+        roundDiv.className = 'vote-round';
+        
+        const header = document.createElement('h3');
+        header.textContent = `Round ${index + 1} Results:`;
+        header.style.color = '#4ade80';
+        header.style.marginBottom = '10px';
+        roundDiv.appendChild(header);
+        
+        const table = document.createElement('div');
+        table.className = 'vote-table';
+        
+        round.votes.forEach(vote => {
+            const row = document.createElement('div');
+            row.className = 'vote-row';
+            row.innerHTML = `
+                <span class="vote-count">${vote.count}</span>
+                <span class="vote-arrow">│</span>
+                <span class="vote-detail">${vote.voterName} → ${vote.targetName}</span>
+            `;
+            table.appendChild(row);
+        });
+        
+        roundDiv.appendChild(table);
+        container.appendChild(roundDiv);
+    });
+}
 
 // Utility Functions
 function showScreen(screenName) {
@@ -187,15 +240,6 @@ function updateGamePlayerList(players) {
             playerEl.classList.add('ready');
         }
         
-        // Get vote count for this player during warp phase
-        let voteCount = '';
-        if (gameState.phase === 'warp' && gameState.voteResults && gameState.voteResults.length > 0) {
-            const voteResult = gameState.voteResults.find(v => v.playerId === player.id);
-            if (voteResult) {
-                voteCount = ` (${voteResult.votes} vote${voteResult.votes !== 1 ? 's' : ''})`;
-            }
-        }
-        
         // Show Gnosia label if current player is Gnosia and this player is also Gnosia
         const isOtherGnosia = gameState.isGnosia && gameState.gnosiaPlayerIds && gameState.gnosiaPlayerIds.includes(player.id);
         const gnosiaLabel = isOtherGnosia ? ' <span style="color: #ff6b6b; font-weight: bold;">[Gnosia]</span>' : '';
@@ -280,7 +324,7 @@ function updatePhase(phase, instructions) {
         if (gameState.isSpectator) {
             instructionText.textContent = 'Spectating... You will join in the next game.';
         } else {
-            instructionText.textContent = 'Discuss with others on voice chat who you think is Gnosia.';
+            instructionText.textContent = 'Discuss with others on who you think is Gnosia.';
             
             // Check if current player is alive
             const currentPlayer = gameState.players.find(p => p.id === socket.id);
@@ -716,9 +760,9 @@ socket.on('phaseChange', ({ phase, round, players }) => {
         gameState.players = players;
     }
     
-    // Clear vote results when starting new debate phase
-    if (phase === 'debate') {
-        gameState.voteResults = [];
+    // Clear vote results history when starting round 1 debate phase
+    if (phase === 'debate' && round === 1) {
+        gameState.voteResultsHistory = [];
     }
     
     // Reset hasActed flags when entering warp phase
@@ -742,9 +786,19 @@ socket.on('voteSubmitted', ({ voterCount, totalPlayers }) => {
     showNotification(`${voterCount}/${totalPlayers} votes submitted`);
 });
 
-socket.on('votingComplete', ({ eliminatedPlayer, voteResults, players }) => {
+socket.on('votingComplete', ({ eliminatedPlayer, voteResults, allVotes, players }) => {
     gameState.players = players;
-    gameState.voteResults = voteResults; // Store vote results
+    
+    // Store this round's vote results in history
+    if (allVotes && allVotes.length > 0) {
+        const roundVotes = allVotes.map(v => ({
+            voterName: v.voterName,
+            targetName: v.targetName,
+            count: v.count
+        }));
+        gameState.voteResultsHistory.push({ votes: roundVotes });
+    }
+    
     showNotification(`${eliminatedPlayer.name} was frozen!`);
     
     // Update role display if current player was eliminated
@@ -864,7 +918,7 @@ socket.on('gameRestarted', ({ players }) => {
     gameState.isDoctor = false;
     gameState.isGuardian = false;
     gameState.investigations = new Map();
-    gameState.voteResults = [];
+    gameState.voteResultsHistory = [];
     gameState.gnosiaPlayerIds = [];
     gameState.totalGnosiaCount = 0;
     
@@ -926,7 +980,7 @@ socket.on('returnedToLobby', ({ players }) => {
     gameState.isDoctor = false;
     gameState.isGuardian = false;
     gameState.investigations = new Map();
-    gameState.voteResults = [];
+    gameState.voteResultsHistory = [];
     gameState.gnosiaPlayerIds = [];
     gameState.totalGnosiaCount = 0;
     

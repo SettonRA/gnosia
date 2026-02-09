@@ -426,6 +426,11 @@ function submitVote(roomCode, voterId, targetPlayerId) {
         playerName: game.players.get(id).name,
         votes: count
       })),
+      allVotes: Array.from(game.votes.entries()).map(([voterId, targetId]) => ({
+        voterName: game.players.get(voterId).name,
+        targetName: game.players.get(targetId).name,
+        count: voteCounts.get(targetId) || 0
+      })),
       players: Array.from(game.players.values()).map(p => ({
         id: p.id,
         name: p.name,
