@@ -106,10 +106,16 @@ function updateVoteResultsDisplay() {
         round.votes.forEach(vote => {
             const row = document.createElement('div');
             row.className = 'vote-row';
+            
+            // Apply strikethrough to eliminated player's name
+            const voterDisplay = vote.voterName === round.eliminatedPlayerName 
+                ? `<del>${vote.voterName}</del>` 
+                : vote.voterName;
+            
             row.innerHTML = `
                 <span class="vote-count">${vote.count}</span>
                 <span class="vote-arrow">│</span>
-                <span class="vote-detail">${vote.voterName} → ${vote.targetName}</span>
+                <span class="vote-detail">${voterDisplay} → ${vote.targetName}</span>
             `;
             table.appendChild(row);
         });
@@ -796,7 +802,10 @@ socket.on('votingComplete', ({ eliminatedPlayer, voteResults, allVotes, players 
             targetName: v.targetName,
             count: v.count
         }));
-        gameState.voteResultsHistory.push({ votes: roundVotes });
+        gameState.voteResultsHistory.push({ 
+            votes: roundVotes,
+            eliminatedPlayerName: eliminatedPlayer.name
+        });
     }
     
     showNotification(`${eliminatedPlayer.name} was frozen!`);
