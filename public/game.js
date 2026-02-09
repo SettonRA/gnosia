@@ -611,7 +611,7 @@ socket.on('roleAssigned', ({ role, isGnosia, isFollower, gnosiaPlayers, helperRo
     
     // Clear any previous styling completely
     roleDisplay.classList.remove('gnosia');
-    roleDisplay.style.background = ''; // Clear inline styles
+    roleDisplay.style.background = 'rgba(255, 107, 107, 0.2)'; // Reset to default lobby color
     
     if (isGnosia) {
         roleDisplay.classList.add('gnosia');
@@ -866,8 +866,9 @@ socket.on('gameRestarted', ({ players }) => {
     // Reset role display styling
     const roleDisplay = document.getElementById('role-display');
     roleDisplay.classList.remove('gnosia');
-    roleDisplay.style.background = '';
+    roleDisplay.style.background = 'rgba(255, 107, 107, 0.2)'; // Reset to default lobby color
     document.getElementById('player-role').textContent = 'Waiting...';
+    document.getElementById('player-role').style.color = ''; // Reset text color
     
     // Reset role counts
     document.getElementById('gnosia-count').textContent = '0';
@@ -927,8 +928,9 @@ socket.on('returnedToLobby', ({ players }) => {
     // Reset role display styling
     const roleDisplay = document.getElementById('role-display');
     roleDisplay.classList.remove('gnosia');
-    roleDisplay.style.background = '';
+    roleDisplay.style.background = 'rgba(255, 107, 107, 0.2)'; // Reset to default lobby color
     document.getElementById('player-role').textContent = 'Waiting...';
+    document.getElementById('player-role').style.color = ''; // Reset text color
     
     // Reset role counts
     document.getElementById('gnosia-count').textContent = '0';
