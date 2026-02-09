@@ -41,9 +41,9 @@ function createRoom(socketId, playerName, isPublic = false) {
       guardian: []
     },
     warpActions: {
-      engineerInvestigation: null,
-      doctorInvestigation: null,
-      guardianProtection: null,
+      engineerInvestigations: new Set(), // Track which engineers have acted
+      doctorInvestigations: new Set(), // Track which doctors have acted
+      guardianProtections: new Map(), // Map guardianId -> targetPlayerId
       gnosiaElimination: new Map() // Map of gnosiaId -> targetPlayerId
     },
     investigations: new Map(), // Store investigation results per player
@@ -386,7 +386,7 @@ function checkWarpActionsComplete(game) {
   // Check if alive Engineers have acted
   for (const engineerId of game.helperRoles.engineer) {
     const engineer = game.players.get(engineerId);
-    if (engineer && engineer.isAlive && !engineer.disconnected && !game.warpActions.engineerInvestigation) {
+    if (engineer && engineer.isAlive && !engineer.disconnected && !game.warpActions.engineerInvestigations.has(engineerId)) {
       return false;
     }
   }
@@ -396,7 +396,7 @@ function checkWarpActionsComplete(game) {
   if (deadPlayers.length > 0) {
     for (const doctorId of game.helperRoles.doctor) {
       const doctor = game.players.get(doctorId);
-      if (doctor && doctor.isAlive && !doctor.disconnected && !game.warpActions.doctorInvestigation) {
+      if (doctor && doctor.isAlive && !doctor.disconnected && !game.warpActions.doctorInvestigations.has(doctorId)) {
         return false;
       }
     }
@@ -405,7 +405,7 @@ function checkWarpActionsComplete(game) {
   // Check if alive Guardians have acted
   for (const guardianId of game.helperRoles.guardian) {
     const guardian = game.players.get(guardianId);
-    if (guardian && guardian.isAlive && !guardian.disconnected && !game.warpActions.guardianProtection) {
+    if (guardian && guardian.isAlive && !guardian.disconnected && !game.warpActions.guardianProtections.has(guardianId)) {
       return false;
     }
   }
@@ -448,7 +448,8 @@ function completeWarpPhase(roomCode) {
   }
 
   const target = targetPlayerId ? game.players.get(targetPlayerId) : null;
-  const wasProtected = game.warpActions.guardianProtection && game.warpActions.guardianProtection.targetPlayerId === targetPlayerId;
+  // Check if any guardian protected this target
+  const wasProtected = targetPlayerId && Array.from(game.warpActions.guardianProtections.values()).includes(targetPlayerId);
   
   let eliminatedPlayer = null;
   if (!wasProtected && target) {
@@ -461,9 +462,9 @@ function completeWarpPhase(roomCode) {
 
   // Reset warp actions for next round
   game.warpActions = {
-    engineerInvestigation: null,
-    doctorInvestigation: null,
-    guardianProtection: null,
+    engineerInvestigations: new Set(),
+    doctorInvestigations: new Set(),
+    guardianProtections: new Map(),
     gnosiaElimination: new Map()
   };
 
@@ -508,9 +509,9 @@ function engineerInvestigate(roomCode, engineerId, targetPlayerId) {
     return { success: false, error: 'Engineer must be alive' };
   }
   
-  // Check if Engineer already investigated this round
-  if (game.warpActions.engineerInvestigation && game.warpActions.engineerInvestigation !== engineerId) {
-    return { success: false, error: 'Investigation already completed' };
+  // Check if this Engineer already investigated this round
+  if (game.warpActions.engineerInvestigations.has(engineerId)) {
+    return { success: false, error: 'You have already investigated this round' };
   }
 
   const target = game.players.get(targetPlayerId);
@@ -526,7 +527,7 @@ function engineerInvestigate(roomCode, engineerId, targetPlayerId) {
   game.investigations.get(engineerId).set(targetPlayerId, result);
   
   // Mark action as completed by this specific engineer
-  game.warpActions.engineerInvestigation = engineerId;
+  game.warpActions.engineerInvestigations.add(engineerId);
   
   // Check if all actions complete
   const allComplete = checkWarpActionsComplete(game);
@@ -558,9 +559,9 @@ function doctorInvestigate(roomCode, doctorId, targetPlayerId) {
     return { success: false, error: 'Doctor must be alive' };
   }
   
-  // Check if Doctor already investigated this round
-  if (game.warpActions.doctorInvestigation && game.warpActions.doctorInvestigation !== doctorId) {
-    return { success: false, error: 'Investigation already completed' };
+  // Check if this Doctor already investigated this round
+  if (game.warpActions.doctorInvestigations.has(doctorId)) {
+    return { success: false, error: 'You have already investigated this round' };
   }
 
   const target = game.players.get(targetPlayerId);
@@ -576,7 +577,7 @@ function doctorInvestigate(roomCode, doctorId, targetPlayerId) {
   game.investigations.get(doctorId).set(targetPlayerId, result);
   
   // Mark action as completed by this specific doctor
-  game.warpActions.doctorInvestigation = doctorId;
+  game.warpActions.doctorInvestigations.add(doctorId);
   
   // Check if all actions complete
   const allComplete = checkWarpActionsComplete(game);
@@ -608,9 +609,9 @@ function guardianProtect(roomCode, guardianId, targetPlayerId) {
     return { success: false, error: 'Guardian must be alive' };
   }
   
-  // Check if Guardian already protected this round (but allow same guardian to change)
-  if (game.warpActions.guardianProtection && typeof game.warpActions.guardianProtection === 'object' && game.warpActions.guardianProtection.guardianId !== guardianId) {
-    return { success: false, error: 'Protection already completed' };
+  // Check if this Guardian already protected this round
+  if (game.warpActions.guardianProtections.has(guardianId)) {
+    return { success: false, error: 'You have already protected someone this round' };
   }
 
   const target = game.players.get(targetPlayerId);
@@ -623,8 +624,8 @@ function guardianProtect(roomCode, guardianId, targetPlayerId) {
     return { success: false, error: 'Guardian cannot protect themselves' };
   }
 
-  // Store protected player and guardian ID
-  game.warpActions.guardianProtection = { guardianId, targetPlayerId };
+  // Store protected player
+  game.warpActions.guardianProtections.set(guardianId, targetPlayerId);
   
   // Check if all actions complete
   const allComplete = checkWarpActionsComplete(game);
@@ -769,9 +770,9 @@ function restartGame(roomCode, requesterId) {
   
   // Reset warp actions
   game.warpActions = {
-    engineerInvestigation: null,
-    doctorInvestigation: null,
-    guardianProtection: null,
+    engineerInvestigations: new Set(),
+    doctorInvestigations: new Set(),
+    guardianProtections: new Map(),
     gnosiaElimination: new Map()
   };
 
@@ -969,9 +970,9 @@ function attemptReconnect(roomCode, playerName, newSocketId) {
   // Include warp action status if in warp phase
   if (game.phase === 'warp') {
     roleData.hasActed = {
-      engineer: game.warpActions.engineerInvestigation === newSocketId,
-      doctor: game.warpActions.doctorInvestigation === newSocketId,
-      guardian: game.warpActions.guardianProtection && game.warpActions.guardianProtection.guardianId === newSocketId,
+      engineer: game.warpActions.engineerInvestigations.has(newSocketId),
+      doctor: game.warpActions.doctorInvestigations.has(newSocketId),
+      guardian: game.warpActions.guardianProtections.has(newSocketId),
       gnosia: game.warpActions.gnosiaElimination.has(newSocketId)
     };
   }
@@ -1110,9 +1111,9 @@ function returnToLobby(roomCode, requesterId) {
   game.votes.clear();
   game.investigations.clear();
   game.warpActions = {
-    engineerInvestigation: null,
-    doctorInvestigation: null,
-    guardianProtection: null,
+    engineerInvestigations: new Set(),
+    doctorInvestigations: new Set(),
+    guardianProtections: new Map(),
     gnosiaElimination: new Map()
   };
   game.helperRoles = {
