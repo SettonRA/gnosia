@@ -84,7 +84,6 @@ voteResultsModal.addEventListener('click', (e) => {
 
 function updateVoteResultsDisplay() {
     const container = document.getElementById('vote-results-content');
-    console.log('Updating vote results display, history:', gameState.voteResultsHistory);
     if (gameState.voteResultsHistory.length === 0) {
         container.innerHTML = '<p style="color: #9ca3af; text-align: center; padding: 20px;">No votes have been cast yet.</p>';
         return;
@@ -790,8 +789,6 @@ socket.on('voteSubmitted', ({ voterCount, totalPlayers }) => {
 socket.on('votingComplete', ({ eliminatedPlayer, voteResults, allVotes, players }) => {
     gameState.players = players;
     
-    console.log('votingComplete received:', { allVotes, voteResultsHistory: gameState.voteResultsHistory });
-    
     // Store this round's vote results in history
     if (allVotes && allVotes.length > 0) {
         const roundVotes = allVotes.map(v => ({
@@ -800,9 +797,6 @@ socket.on('votingComplete', ({ eliminatedPlayer, voteResults, allVotes, players 
             count: v.count
         }));
         gameState.voteResultsHistory.push({ votes: roundVotes });
-        console.log('Vote results stored:', gameState.voteResultsHistory);
-    } else {
-        console.log('No allVotes data received');
     }
     
     showNotification(`${eliminatedPlayer.name} was frozen!`);

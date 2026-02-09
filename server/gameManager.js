@@ -407,6 +407,13 @@ function submitVote(roomCode, voterId, targetPlayerId) {
     // Check win conditions
     const { gameOver, winner } = checkWinCondition(game);
 
+    // Create allVotes array BEFORE clearing votes
+    const allVotes = Array.from(game.votes.entries()).map(([voterId, targetId]) => ({
+      voterName: game.players.get(voterId).name,
+      targetName: game.players.get(targetId).name,
+      count: voteCounts.get(targetId) || 0
+    }));
+
     game.votes.clear();
     
     if (!gameOver) {
@@ -426,11 +433,7 @@ function submitVote(roomCode, voterId, targetPlayerId) {
         playerName: game.players.get(id).name,
         votes: count
       })),
-      allVotes: Array.from(game.votes.entries()).map(([voterId, targetId]) => ({
-        voterName: game.players.get(voterId).name,
-        targetName: game.players.get(targetId).name,
-        count: voteCounts.get(targetId) || 0
-      })),
+      allVotes: allVotes,
       players: Array.from(game.players.values()).map(p => ({
         id: p.id,
         name: p.name,
