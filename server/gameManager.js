@@ -127,8 +127,9 @@ function startGame(roomCode, requesterId) {
   const playerArray = Array.from(game.players.values());
   const playerCount = playerArray.length;
   
-  // Determine number of Gnosia (roughly 1/3 of players, minimum 1)
-  const gnosiaCount = Math.max(1, Math.floor(playerCount / 3));
+  // Determine number of Gnosia - ensures at least 2 rounds minimum
+  // Formula: (playerCount - 1) / 3, rounded down, minimum 1
+  const gnosiaCount = Math.max(1, Math.floor((playerCount - 1) / 3));
   
   // Shuffle players
   const shuffled = playerArray.sort(() => Math.random() - 0.5);
