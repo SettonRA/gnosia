@@ -721,6 +721,11 @@ socket.on('phaseChange', ({ phase, round, players }) => {
         gameState.voteResults = [];
     }
     
+    // Reset hasActed flags when entering warp phase
+    if (phase === 'warp') {
+        gameState.hasActed = {};
+    }
+    
     updatePhase(phase);
     updateGamePlayerList(gameState.players); // Update after phase changes so vote counts show
 });

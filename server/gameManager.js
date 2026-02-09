@@ -560,8 +560,21 @@ function completeWarpPhase(roomCode) {
   }
 
   const target = targetPlayerId ? game.players.get(targetPlayerId) : null;
+  
   // Check if any guardian protected this target
-  const wasProtected = targetPlayerId && Array.from(game.warpActions.guardianProtections.values()).includes(targetPlayerId);
+  const protectedPlayerIds = Array.from(game.warpActions.guardianProtections.values());
+  const wasProtected = targetPlayerId && protectedPlayerIds.includes(targetPlayerId);
+  
+  // Debug logging
+  if (targetPlayerId) {
+    console.log('Warp Phase Complete:', {
+      targetPlayerId,
+      targetName: target?.name,
+      protectedPlayerIds,
+      wasProtected,
+      gnosiaVotes: Array.from(game.warpActions.gnosiaElimination.entries())
+    });
+  }
   
   let eliminatedPlayer = null;
   if (!wasProtected && target) {
