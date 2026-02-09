@@ -609,8 +609,9 @@ socket.on('roleAssigned', ({ role, isGnosia, isFollower, gnosiaPlayers, helperRo
     document.getElementById('player-role').textContent = isFollower ? 'Follower' : role;
     const roleDisplay = document.getElementById('role-display');
     
-    // Clear any previous gnosia class
+    // Clear any previous styling completely
     roleDisplay.classList.remove('gnosia');
+    roleDisplay.style.background = ''; // Clear inline styles
     
     if (isGnosia) {
         roleDisplay.classList.add('gnosia');
