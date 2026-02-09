@@ -269,7 +269,7 @@ function updateGamePlayerList(players) {
         }
         
         playerEl.innerHTML = `
-            <strong>${player.name}${voteCount}${gnosiaLabel}${investigationLabel}${roleLabel}</strong>
+            <strong>${player.name}${gnosiaLabel}${investigationLabel}${roleLabel}</strong>
             ${player.disconnected ? '<span style="color: #fbbf24;">● Disconnected</span>' : 
               player.isAlive ? '<span style="color: #4ade80;">● Alive</span>' : '<span style="color: #f87171;">● Frozen/Dead</span>'}
         `;
