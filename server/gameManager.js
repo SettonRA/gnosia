@@ -411,7 +411,7 @@ function submitVote(roomCode, voterId, targetPlayerId) {
     const allVotes = Array.from(game.votes.entries()).map(([voterId, targetId]) => ({
       voterName: game.players.get(voterId).name,
       targetName: game.players.get(targetId).name,
-      count: voteCounts.get(targetId) || 0
+      count: voteCounts.get(voterId) || 0  // Votes received by the VOTER, not the target
     }));
 
     game.votes.clear();
