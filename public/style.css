@@ -421,6 +421,11 @@ input[type="text"]:focus {
     border-left: 4px solid #ff3232;
 }
 
+.result-player.eliminated {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
 /* Notification Toast */
 .notification {
     position: fixed;

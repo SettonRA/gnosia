@@ -816,18 +816,18 @@ socket.on('gameOver', ({ winner, finalState }) => {
     finalState.players.forEach(player => {
         const playerEl = document.createElement('div');
         playerEl.className = 'result-player';
-        if (player.isGnosia) playerEl.classList.add('gnosia');
+        if (player.isGnosia || player.isFollower) playerEl.classList.add('gnosia');
+        if (!player.isAlive) playerEl.classList.add('eliminated');
         
         // Determine display role (reveal Follower in results)
         let displayRole = player.role;
         if (player.isFollower) {
             displayRole = 'Follower';
-            playerEl.style.color = '#fbbf24'; // Yellow/orange for Follower
         }
         
         playerEl.innerHTML = `
             <span>${player.name}</span>
-            <span>${displayRole} ${player.isAlive ? '(Survived)' : '(Eliminated)'}</span>
+            <span>${displayRole}</span>
         `;
         resultsContainer.appendChild(playerEl);
     });
