@@ -127,12 +127,47 @@ function startGame(roomCode, requesterId) {
   const playerArray = Array.from(game.players.values());
   const playerCount = playerArray.length;
   
+  // Testing: Check for players with special names and reserve them
+  const testPlayers = {
+    gnosia: [],
+    follower: null,
+    engineer: null,
+    doctor: null,
+    guardian: null,
+    crew: null
+  };
+  
+  const remainingPlayers = [];
+  playerArray.forEach(player => {
+    const nameLower = player.name.toLowerCase();
+    if (nameLower === 'gnosia') {
+      testPlayers.gnosia.push(player);
+    } else if (nameLower === 'follower') {
+      testPlayers.follower = player;
+    } else if (nameLower === 'engineer') {
+      testPlayers.engineer = player;
+    } else if (nameLower === 'doctor') {
+      testPlayers.doctor = player;
+    } else if (nameLower === 'guardian') {
+      testPlayers.guardian = player;
+    } else if (nameLower === 'crew') {
+      testPlayers.crew = player;
+    } else {
+      remainingPlayers.push(player);
+    }
+  });
+  
   // Determine number of Gnosia - ensures at least 2 rounds minimum
   // Formula: (playerCount - 1) / 3, rounded down, minimum 1
-  const gnosiaCount = Math.max(1, Math.floor((playerCount - 1) / 3));
+  let gnosiaCount = Math.max(1, Math.floor((playerCount - 1) / 3));
   
-  // Shuffle players
-  const shuffled = playerArray.sort(() => Math.random() - 0.5);
+  // Adjust gnosia count if test gnosia players exist
+  if (testPlayers.gnosia.length > 0) {
+    gnosiaCount = Math.max(gnosiaCount, testPlayers.gnosia.length);
+  }
+  
+  // Shuffle remaining players
+  const shuffled = remainingPlayers.sort(() => Math.random() - 0.5);
   
   // Assign Gnosia first
   const roleAssignments = [];
@@ -140,26 +175,60 @@ function startGame(roomCode, requesterId) {
   const crewPlayers = [];
   let followerPlayer = null;
   
+  // Assign test Gnosia players first
+  testPlayers.gnosia.forEach(player => {
+    player.isGnosia = true;
+    player.isAlive = true;
+    player.isFollower = false;
+    player.role = ROLES.GNOSIA;
+    gnosiaPlayers.push(player);
+  });
+  
+  // Fill remaining Gnosia slots from shuffled players
+  const remainingGnosiaCount = gnosiaCount - testPlayers.gnosia.length;
+  for (let i = 0; i < Math.min(remainingGnosiaCount, shuffled.length); i++) {
+    const player = shuffled[i];
+    player.isGnosia = true;
+    player.isAlive = true;
+    player.isFollower = false;
+    player.role = ROLES.GNOSIA;
+    gnosiaPlayers.push(player);
+  }
+  
+  // Assign crew members (remaining players)
+  for (let i = remainingGnosiaCount; i < shuffled.length; i++) {
+    const player = shuffled[i];
+    player.isGnosia = false;
+    player.isAlive = true;
+    player.isFollower = false;
+    crewPlayers.push(player);
+  }
+  
+  // Add test crew/helper players to crew
+  if (testPlayers.follower) crewPlayers.push(testPlayers.follower);
+  if (testPlayers.engineer) crewPlayers.push(testPlayers.engineer);
+  if (testPlayers.doctor) crewPlayers.push(testPlayers.doctor);
+  if (testPlayers.guardian) crewPlayers.push(testPlayers.guardian);
+  if (testPlayers.crew) crewPlayers.push(testPlayers.crew);
+  
+  // Initialize test crew players
+  [testPlayers.follower, testPlayers.engineer, testPlayers.doctor, testPlayers.guardian, testPlayers.crew].forEach(player => {
+    if (player) {
+      player.isGnosia = false;
+      player.isAlive = true;
+      player.isFollower = false;
+    }
+  });
+  
   // Determine if there should be a Follower (only if 2+ Gnosia)
   let hasFollower = false;
   if (gnosiaCount >= 2) {
-    // 30% chance per Gnosia past the first one
-    const followerChance = (gnosiaCount - 1) * 0.30;
-    hasFollower = Math.random() < followerChance;
-  }
-  
-  for (let i = 0; i < shuffled.length; i++) {
-    const player = shuffled[i];
-    const isGnosia = i < gnosiaCount;
-    player.isGnosia = isGnosia;
-    player.isAlive = true;
-    player.isFollower = false;
-    
-    if (isGnosia) {
-      player.role = ROLES.GNOSIA;
-      gnosiaPlayers.push(player);
+    // If there's a test follower, force it, otherwise random chance
+    if (testPlayers.follower) {
+      hasFollower = true;
     } else {
-      crewPlayers.push(player);
+      const followerChance = (gnosiaCount - 1) * 0.30;
+      hasFollower = Math.random() < followerChance;
     }
   }
   
@@ -184,18 +253,60 @@ function startGame(roomCode, requesterId) {
   
   // Assign Follower first if applicable
   if (hasFollower && shuffledCrew.length > 0) {
-    followerPlayer = shuffledCrew[0];
+    if (testPlayers.follower) {
+      // Use test follower
+      followerPlayer = testPlayers.follower;
+    } else {
+      // Use first shuffled crew member
+      followerPlayer = shuffledCrew[0];
+    }
     followerPlayer.role = ROLES.CREW; // Follower shows as Crew
     followerPlayer.isFollower = true;
     followerPlayer.isGnosia = false; // Explicitly set to false
   }
   
-  // Assign helper roles to crew members (skip Follower if assigned)
-  const startIndex = hasFollower ? 1 : 0;
-  for (let i = startIndex; i < shuffledCrew.length; i++) {
-    const helperRoleIndex = i - startIndex;
-    if (helperRoleIndex < selectedHelperRoles.length) {
-      const helperRole = selectedHelperRoles[helperRoleIndex];
+  // Remove assigned follower from crew to avoid double assignment
+  if (followerPlayer) {
+    const followerIndex = shuffledCrew.indexOf(followerPlayer);
+    if (followerIndex > -1) {
+      shuffledCrew.splice(followerIndex, 1);
+    }
+  }
+  
+  // Assign test helper roles first
+  if (testPlayers.engineer) {
+    testPlayers.engineer.role = ROLES.ENGINEER;
+    game.helperRoles.engineer.push(testPlayers.engineer.id);
+    const index = shuffledCrew.indexOf(testPlayers.engineer);
+    if (index > -1) shuffledCrew.splice(index, 1);
+  }
+  
+  if (testPlayers.doctor && availableHelperRoles.includes(ROLES.DOCTOR)) {
+    testPlayers.doctor.role = ROLES.DOCTOR;
+    game.helperRoles.doctor.push(testPlayers.doctor.id);
+    const index = shuffledCrew.indexOf(testPlayers.doctor);
+    if (index > -1) shuffledCrew.splice(index, 1);
+  }
+  
+  if (testPlayers.guardian) {
+    testPlayers.guardian.role = ROLES.GUARDIAN;
+    game.helperRoles.guardian.push(testPlayers.guardian.id);
+    const index = shuffledCrew.indexOf(testPlayers.guardian);
+    if (index > -1) shuffledCrew.splice(index, 1);
+  }
+  
+  // Assign crew role to test crew player
+  if (testPlayers.crew) {
+    testPlayers.crew.role = ROLES.CREW;
+    const index = shuffledCrew.indexOf(testPlayers.crew);
+    if (index > -1) shuffledCrew.splice(index, 1);
+  }
+  
+  // Assign remaining helper roles to remaining crew members
+  let roleIndex = 0;
+  for (let i = 0; i < shuffledCrew.length; i++) {
+    if (roleIndex < selectedHelperRoles.length) {
+      const helperRole = selectedHelperRoles[roleIndex];
       shuffledCrew[i].role = helperRole;
       
       // Store helper role player IDs (now arrays to support multiples)
@@ -206,6 +317,7 @@ function startGame(roomCode, requesterId) {
       } else if (helperRole === ROLES.GUARDIAN) {
         game.helperRoles.guardian.push(shuffledCrew[i].id);
       }
+      roleIndex++;
     } else {
       // Regular crew member
       shuffledCrew[i].role = ROLES.CREW;
