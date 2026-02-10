@@ -1221,8 +1221,20 @@ function returnToLobby(roomCode, requesterId) {
     player.ready = false;
   });
   
-  // Clear spectators and left players
+  // Convert spectators to players
+  game.spectators.forEach((spectator, socketId) => {
+    game.players.set(socketId, {
+      id: socketId,
+      name: spectator.name,
+      isAlive: true,
+      role: null,
+      isGnosia: false,
+      ready: false
+    });
+  });
   game.spectators.clear();
+  
+  // Clear left players
   game.leftPlayers.clear();
   
   // Reset game state
