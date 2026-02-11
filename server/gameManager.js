@@ -372,7 +372,8 @@ function startGame(roomCode, requesterId) {
       socketId: player.id,
       role: player.role,
       isGnosia: player.isGnosia,
-      isFollower: player.isFollower || false
+      isFollower: player.isFollower || false,
+      isBug: player.isBug || false
     });
   });
 

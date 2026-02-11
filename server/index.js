@@ -142,11 +142,12 @@ io.on('connection', (socket) => {
       );
       
       // Send role assignments privately to each player
-      result.roleAssignments.forEach(({ socketId, role, isGnosia, isFollower }) => {
+      result.roleAssignments.forEach(({ socketId, role, isGnosia, isFollower, isBug }) => {
         const roleData = { 
           role, 
           isGnosia,
           isFollower,
+          isBug,
           gnosiaPlayers, // Send to all players for the count display
           helperRoleCounts: result.helperRoleCounts,
           isEngineer: result.helperRoles.engineer.includes(socketId),
@@ -189,6 +190,7 @@ io.on('connection', (socket) => {
         // If Bug was eliminated, notify all players
         if (result.eliminatedPlayer.wasBug) {
           io.to(roomCode).emit('bugEliminated', {
+            playerId: result.eliminatedPlayer.id,
             playerName: result.eliminatedPlayer.name,
             eliminatedBy: 'vote'
           });
@@ -261,6 +263,7 @@ io.on('connection', (socket) => {
       // If Bug was eliminated, notify all players
       if (result.bugEliminated) {
         io.to(roomCode).emit('bugEliminated', {
+          playerId: targetPlayerId,
           playerName: result.targetName,
           eliminatedBy: 'engineer'
         });

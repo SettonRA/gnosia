@@ -258,6 +258,12 @@ function updateGamePlayerList(players) {
             investigationLabel = ` <span style="color: ${color}; font-weight: bold;">(${result})</span>`;
         }
         
+        // Show Bug label if Bug was revealed (eliminated)
+        let bugLabel = '';
+        if (player.isBug && player.bugRevealed) {
+            bugLabel = ` <span style="color: #a855f7; font-weight: bold;">[BUG]</span>`;
+        }
+        
         // Show role if spectator (including Follower)
         let roleLabel = '';
         if (gameState.isSpectator && player.role) {
@@ -275,7 +281,7 @@ function updateGamePlayerList(players) {
         }
         
         playerEl.innerHTML = `
-            <strong>${player.name}${gnosiaLabel}${investigationLabel}${roleLabel}</strong>
+            <strong>${player.name}${gnosiaLabel}${investigationLabel}${bugLabel}${roleLabel}</strong>
             ${player.disconnected ? '<span style="color: #fbbf24;">● Disconnected</span>' : 
               player.isAlive ? '<span style="color: #4ade80;">● Alive</span>' : '<span style="color: #f87171;">● Frozen/Dead</span>'}
         `;
@@ -645,25 +651,41 @@ socket.on('playerJoined', ({ players, message }) => {
     showNotification(message);
 });
 
-socket.on('roleAssigned', ({ role, isGnosia, isFollower, gnosiaPlayers, helperRoleCounts, isEngineer, isDoctor, isGuardian }) => {
+socket.on('roleAssigned', ({ role, isGnosia, isFollower, isBug, gnosiaPlayers, helperRoleCounts, isEngineer, isDoctor, isGuardian }) => {
     gameState.role = role;
     gameState.isGnosia = isGnosia;
     gameState.isFollower = isFollower || false;
+    gameState.isBug = isBug || false;
     gameState.isSpectator = false; // No longer a spectator once role is assigned
     gameState.isEngineer = isEngineer || false;
     gameState.isDoctor = isDoctor || false;
     gameState.isGuardian = isGuardian || false;
     gameState.investigations = new Map(); // Store investigation results
     
-    // Display appropriate role name (Follower sees "Follower", not "Crew")
-    document.getElementById('player-role').textContent = isFollower ? 'Follower' : role;
+    // Display appropriate role name (Follower sees "Follower", Bug sees "Bug")
+    let displayRole = role;
+    if (isFollower) {
+        displayRole = 'Follower';
+    } else if (isBug) {
+        displayRole = 'Bug';
+    }
+    document.getElementById('player-role').textContent = displayRole;
     const roleDisplay = document.getElementById('role-display');
     
     // Clear any previous styling completely
     roleDisplay.classList.remove('gnosia');
     roleDisplay.style.background = 'rgba(255, 107, 107, 0.2)'; // Reset to default lobby color
     
-    if (isGnosia) {
+    if (isBug) {
+        // Bug gets purple display
+        roleDisplay.style.background = 'linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(126, 34, 206, 0.3))';
+        showNotification('You are the BUG! Survive until the end to win. You appear as Human in investigations.');
+        
+        if (gnosiaPlayers) {
+            gameState.totalGnosiaCount = gnosiaPlayers.length;
+            document.getElementById('gnosia-count').textContent = gameState.totalGnosiaCount;
+        }
+    } else if (isGnosia) {
         roleDisplay.classList.add('gnosia');
         
         // Store Gnosia player IDs for filtering
@@ -868,9 +890,17 @@ socket.on('gnosiaEliminationPhase', ({ alivePlayers }) => {
     }
 });
 
-socket.on('bugEliminated', ({ playerName, eliminatedBy }) => {
+socket.on('bugEliminated', ({ playerId, playerName, eliminatedBy }) => {
     const method = eliminatedBy === 'engineer' ? 'Engineer investigation' : 'voting';
     showNotification(`${playerName} was the BUG and has been eliminated by ${method}!`);
+    
+    // Mark the player as bug in the local game state so it shows in crew status
+    const player = gameState.players.find(p => p.id === playerId);
+    if (player) {
+        player.isBug = true;
+        player.bugRevealed = true;
+        updateGamePlayerList(gameState.players);
+    }
 });
 
 socket.on('gameOver', ({ winner, bugPlayer, finalState }) => {
@@ -890,7 +920,20 @@ socket.on('gameOver', ({ winner, bugPlayer, finalState }) => {
     finalState.players.forEach(player => {
         const playerEl = document.createElement('div');
         playerEl.className = 'result-player';
-        if (player.isGnosia || player.isFollower) playerEl.classList.add('gnosia');
+        
+        // Add role-specific color markers
+        if (player.isBug) {
+            playerEl.classList.add('bug');
+        } else if (player.isGnosia) {
+            playerEl.classList.add('gnosia');
+        } else if (player.isFollower) {
+            playerEl.classList.add('follower');
+        } else if (player.role === 'Engineer' || player.role === 'Doctor' || player.role === 'Guardian') {
+            playerEl.classList.add('helper');
+        } else {
+            playerEl.classList.add('crew');
+        }
+        
         if (!player.isAlive) playerEl.classList.add('eliminated');
         
         // Determine display role (reveal Follower and Bug in results)
