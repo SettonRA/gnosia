@@ -1042,8 +1042,8 @@ function restartGame(roomCode, requesterId) {
   
   // Reset warp actions
   game.warpActions = {
-    engineerInvestigations: new Set(),
-    doctorInvestigations: new Set(),
+    engineerInvestigations: new Map(),
+    doctorInvestigations: new Map(),
     guardianProtections: new Map(),
     gnosiaElimination: new Map()
   };
@@ -1400,8 +1400,8 @@ function returnToLobby(roomCode, requesterId) {
   game.investigations.clear();
   game.bugPlayer = null;
   game.warpActions = {
-    engineerInvestigations: new Set(),
-    doctorInvestigations: new Set(),
+    engineerInvestigations: new Map(),
+    doctorInvestigations: new Map(),
     guardianProtections: new Map(),
     gnosiaElimination: new Map()
   };
