@@ -678,7 +678,6 @@ socket.on('roleAssigned', ({ role, isGnosia, isFollower, isBug, gnosiaPlayers, h
     if (isBug) {
         // Bug gets purple display
         roleDisplay.classList.add('bug');
-        roleDisplay.style.background = 'linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(126, 34, 206, 0.3))';
         showNotification('You are the BUG! Survive until the end to win. You appear as Human in investigations.');
         
         if (gnosiaPlayers) {
@@ -986,6 +985,7 @@ socket.on('gameRestarted', ({ players }) => {
     gameState.role = null;
     gameState.isGnosia = false;
     gameState.isFollower = false;
+    gameState.isBug = false;
     gameState.phase = 'lobby';
     gameState.selectedVote = null;
     gameState.isEngineer = false;
@@ -996,12 +996,11 @@ socket.on('gameRestarted', ({ players }) => {
     gameState.gnosiaPlayerIds = [];
     gameState.totalGnosiaCount = 0;
     
-    // Reset role display styling
+    // Clear role display completely
     const roleDisplay = document.getElementById('role-display');
-    roleDisplay.classList.remove('gnosia');
-    roleDisplay.style.background = 'rgba(255, 107, 107, 0.2)'; // Reset to default lobby color
-    document.getElementById('player-role').textContent = 'Waiting...';
-    document.getElementById('player-role').style.color = ''; // Reset text color
+    roleDisplay.className = '';
+    roleDisplay.style.background = '';
+    roleDisplay.innerHTML = '';
     
     // Reset role counts
     document.getElementById('gnosia-count').textContent = '0';
@@ -1048,6 +1047,7 @@ socket.on('returnedToLobby', ({ players }) => {
     gameState.role = null;
     gameState.isGnosia = false;
     gameState.isFollower = false;
+    gameState.isBug = false;
     gameState.phase = 'lobby';
     gameState.selectedVote = null;
     gameState.isEngineer = false;
@@ -1058,12 +1058,11 @@ socket.on('returnedToLobby', ({ players }) => {
     gameState.gnosiaPlayerIds = [];
     gameState.totalGnosiaCount = 0;
     
-    // Reset role display styling
+    // Clear role display completely
     const roleDisplay = document.getElementById('role-display');
-    roleDisplay.classList.remove('gnosia');
-    roleDisplay.style.background = 'rgba(255, 107, 107, 0.2)'; // Reset to default lobby color
-    document.getElementById('player-role').textContent = 'Waiting...';
-    document.getElementById('player-role').style.color = ''; // Reset text color
+    roleDisplay.className = '';
+    roleDisplay.style.background = '';
+    roleDisplay.innerHTML = '';
     
     // Reset role counts
     document.getElementById('gnosia-count').textContent = '0';

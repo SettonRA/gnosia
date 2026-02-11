@@ -312,6 +312,11 @@ input[type="text"]:focus {
     border: 2px solid #ff3232;
 }
 
+.role-display.bug {
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(126, 34, 206, 0.3));
+    border: 2px solid #a855f7;
+}
+
 .role-display.gnosia #player-role {
     color: #ffffff;
 }
