@@ -252,16 +252,16 @@ function updateGamePlayerList(players) {
         
         // Show investigation result if this player was investigated by current player
         let investigationLabel = '';
-        if (gameState.investigations && gameState.investigations.has(player.id)) {
-            const result = gameState.investigations.get(player.id);
-            const color = result === 'Human' ? '#4ade80' : '#ff6b6b';
-            investigationLabel = ` <span style="color: ${color}; font-weight: bold;">(${result})</span>`;
-        }
         
         // Show Bug label if Bug was revealed (eliminated)
         let bugLabel = '';
         if (player.isBug && player.bugRevealed) {
             bugLabel = ` <span style="color: #a855f7; font-weight: bold;">[BUG]</span>`;
+        } else if (gameState.investigations && gameState.investigations.has(player.id)) {
+            // Only show investigation result if not a revealed Bug
+            const result = gameState.investigations.get(player.id);
+            const color = result === 'Human' ? '#4ade80' : '#ff6b6b';
+            investigationLabel = ` <span style="color: ${color}; font-weight: bold;">(${result})</span>`;
         }
         
         // Show role if spectator (including Follower)
@@ -673,11 +673,12 @@ socket.on('roleAssigned', ({ role, isGnosia, isFollower, isBug, gnosiaPlayers, h
     const roleDisplay = document.getElementById('role-display');
     
     // Clear any previous styling completely
-    roleDisplay.classList.remove('gnosia');
+    roleDisplay.classList.remove('gnosia', 'bug');
     roleDisplay.style.background = 'rgba(255, 107, 107, 0.2)'; // Reset to default lobby color
     
     if (isBug) {
         // Bug gets purple display
+        roleDisplay.classList.add('bug');
         roleDisplay.style.background = 'linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(126, 34, 206, 0.3))';
         showNotification('You are the BUG! Survive until the end to win. You appear as Human in investigations.');
         
@@ -908,7 +909,7 @@ socket.on('gameOver', ({ winner, bugPlayer, finalState }) => {
     const winnerText = document.getElementById('winner-text');
     
     if (winner === 'bug') {
-        winnerText.textContent = `Bug Wins! ${bugPlayer.name} survived to the end!`;
+        winnerText.textContent = `Bug Wins!`;
         winnerText.style.color = '#a855f7'; // Purple for Bug
     } else {
         winnerText.textContent = winner === 'crew' ? 'Crew Wins!' : 'Gnosia Win!';
@@ -934,7 +935,16 @@ socket.on('gameOver', ({ winner, bugPlayer, finalState }) => {
             playerEl.classList.add('crew');
         }
         
-        if (!player.isAlive) playerEl.classList.add('eliminated');
+        // Mark eliminated players OR losers based on winner
+        if (!player.isAlive) {
+            playerEl.classList.add('eliminated');
+        } else if (winner === 'bug' && !player.isBug) {
+            // Bug wins: strike out everyone except Bug
+            playerEl.classList.add('eliminated');
+        } else if (winner === 'crew' && player.isFollower) {
+            // Crew wins but Follower survives: strike out Follower (they lose)
+            playerEl.classList.add('eliminated');
+        }
         
         // Determine display role (reveal Follower and Bug in results)
         let displayRole = player.role;
