@@ -42,8 +42,8 @@ function createRoom(socketId, playerName, isPublic = false) {
       guardian: []
     },
     warpActions: {
-      engineerInvestigations: new Set(), // Track which engineers have acted
-      doctorInvestigations: new Set(), // Track which doctors have acted
+      engineerInvestigations: new Map(), // Map engineerId -> targetPlayerId
+      doctorInvestigations: new Map(), // Map doctorId -> targetPlayerId
       guardianProtections: new Map(), // Map guardianId -> targetPlayerId
       gnosiaElimination: new Map() // Map of gnosiaId -> targetPlayerId
     },
@@ -595,7 +595,59 @@ function completeWarpPhase(roomCode) {
     return { success: false, error: 'Not in warp phase' };
   }
 
-  // Tally Gnosia votes
+  // Step 1: Process Engineer Investigations (these can eliminate Bug or reveal info)
+  const engineerResults = [];
+  for (const [engineerId, targetPlayerId] of game.warpActions.engineerInvestigations.entries()) {
+    const target = game.players.get(targetPlayerId);
+    if (target && target.isAlive) { // Check if still alive (not eliminated by earlier investigation)
+      let bugEliminated = false;
+      
+      // Check if target is the Bug - Bug is eliminated if investigated by Engineer
+      if (target.isBug) {
+        target.isAlive = false;
+        target.isBug = false; // Remove bug status
+        bugEliminated = true;
+      }
+
+      // Store investigation result (Follower and Bug show as Human)
+      const result = (target.isGnosia && !target.isFollower) ? 'Gnosia' : 'Human';
+      if (!game.investigations.has(engineerId)) {
+        game.investigations.set(engineerId, new Map());
+      }
+      game.investigations.get(engineerId).set(targetPlayerId, result);
+      
+      engineerResults.push({
+        engineerId,
+        targetId: targetPlayerId,
+        targetName: target.name,
+        result,
+        bugEliminated
+      });
+    }
+  }
+
+  // Step 2: Process Doctor Investigations (only on dead players)
+  const doctorResults = [];
+  for (const [doctorId, targetPlayerId] of game.warpActions.doctorInvestigations.entries()) {
+    const target = game.players.get(targetPlayerId);
+    if (target && !target.isAlive) {
+      // Store investigation result (Follower shows as Human)
+      const result = (target.isGnosia && !target.isFollower) ? 'Gnosia' : 'Human';
+      if (!game.investigations.has(doctorId)) {
+        game.investigations.set(doctorId, new Map());
+      }
+      game.investigations.get(doctorId).set(targetPlayerId, result);
+      
+      doctorResults.push({
+        doctorId,
+        targetId: targetPlayerId,
+        targetName: target.name,
+        result
+      });
+    }
+  }
+
+  // Step 3: Tally Gnosia votes for elimination
   const voteTally = new Map();
   for (const [gnosiaId, targetId] of game.warpActions.gnosiaElimination.entries()) {
     voteTally.set(targetId, (voteTally.get(targetId) || 0) + 1);
@@ -628,9 +680,12 @@ function completeWarpPhase(roomCode) {
   // Check if target is the Bug (Bug is immune to Gnosia elimination)
   const isBugTarget = target && target.isBug;
   
+  // Check if target was already eliminated by Engineer (e.g., Bug investigation)
+  const alreadyEliminated = target && !target.isAlive;
+  
   let eliminatedPlayer = null;
   let bugTargeted = false;
-  if (!wasProtected && !isBugTarget && target) {
+  if (!wasProtected && !isBugTarget && !alreadyEliminated && target) {
     target.isAlive = false;
     eliminatedPlayer = {
       id: target.id,
@@ -642,8 +697,8 @@ function completeWarpPhase(roomCode) {
 
   // Reset warp actions for next round
   game.warpActions = {
-    engineerInvestigations: new Set(),
-    doctorInvestigations: new Set(),
+    engineerInvestigations: new Map(),
+    doctorInvestigations: new Map(),
     guardianProtections: new Map(),
     gnosiaElimination: new Map()
   };
@@ -659,6 +714,8 @@ function completeWarpPhase(roomCode) {
     eliminatedPlayer,
     wasProtected,
     bugTargeted,
+    engineerResults,
+    doctorResults,
     players: Array.from(game.players.values()).map(p => ({
       id: p.id,
       name: p.name,
@@ -701,23 +758,8 @@ function engineerInvestigate(roomCode, engineerId, targetPlayerId) {
     return { success: false, error: 'Target must be alive' };
   }
 
-  // Check if target is the Bug - Bug is eliminated if investigated by Engineer
-  let bugEliminated = false;
-  if (target.isBug) {
-    target.isAlive = false;
-    target.isBug = false; // Remove bug status
-    bugEliminated = true;
-  }
-
-  // Store investigation result (Follower and Bug show as Human)
-  const result = (target.isGnosia && !target.isFollower) ? 'Gnosia' : 'Human';
-  if (!game.investigations.has(engineerId)) {
-    game.investigations.set(engineerId, new Map());
-  }
-  game.investigations.get(engineerId).set(targetPlayerId, result);
-  
-  // Mark action as completed by this specific engineer
-  game.warpActions.engineerInvestigations.add(engineerId);
+  // Store the investigation target (don't execute yet)
+  game.warpActions.engineerInvestigations.set(engineerId, targetPlayerId);
   
   // Check if all actions complete
   const allComplete = checkWarpActionsComplete(game);
@@ -725,8 +767,6 @@ function engineerInvestigate(roomCode, engineerId, targetPlayerId) {
   return {
     success: true,
     targetName: target.name,
-    result,
-    bugEliminated,
     allComplete
   };
 }
@@ -760,15 +800,8 @@ function doctorInvestigate(roomCode, doctorId, targetPlayerId) {
     return { success: false, error: 'Target must be dead' };
   }
 
-  // Store investigation result (Follower shows as Human)
-  const result = (target.isGnosia && !target.isFollower) ? 'Gnosia' : 'Human';
-  if (!game.investigations.has(doctorId)) {
-    game.investigations.set(doctorId, new Map());
-  }
-  game.investigations.get(doctorId).set(targetPlayerId, result);
-  
-  // Mark action as completed by this specific doctor
-  game.warpActions.doctorInvestigations.add(doctorId);
+  // Store the investigation target (don't execute yet)
+  game.warpActions.doctorInvestigations.set(doctorId, targetPlayerId);
   
   // Check if all actions complete
   const allComplete = checkWarpActionsComplete(game);
@@ -776,7 +809,6 @@ function doctorInvestigate(roomCode, doctorId, targetPlayerId) {
   return {
     success: true,
     targetName: target.name,
-    result,
     allComplete
   };
 }

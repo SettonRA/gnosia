@@ -865,14 +865,18 @@ socket.on('playerProtected', ({ round, players }) => {
     document.getElementById('round-number').textContent = round;
 });
 
-socket.on('investigationResult', ({ targetId, targetName, result }) => {
-    // Store the investigation result
-    gameState.investigations.set(targetId, result);
-    
+socket.on('investigationQueued', ({ targetName }) => {
     // Mark as having acted
     if (!gameState.hasActed) gameState.hasActed = {};
     if (gameState.isEngineer) gameState.hasActed.engineer = true;
     if (gameState.isDoctor) gameState.hasActed.doctor = true;
+    
+    showNotification(`Investigation queued for ${targetName}. Results will be revealed shortly...`);
+});
+
+socket.on('investigationResult', ({ targetId, targetName, result }) => {
+    // Store the investigation result
+    gameState.investigations.set(targetId, result);
     
     // Update the player list to show the investigation
     updateGamePlayerList(gameState.players);

@@ -17,6 +17,36 @@ const PORT = process.env.PORT || 3000;
 
 // Helper function to handle warp phase end
 function handleWarpPhaseEnd(io, roomCode, warpResult) {
+  // Send investigation results to investigators
+  if (warpResult.engineerResults) {
+    warpResult.engineerResults.forEach(result => {
+      io.to(result.engineerId).emit('investigationResult', {
+        targetId: result.targetId,
+        targetName: result.targetName,
+        result: result.result
+      });
+      
+      // If Bug was eliminated, notify all players
+      if (result.bugEliminated) {
+        io.to(roomCode).emit('bugEliminated', {
+          playerId: result.targetId,
+          playerName: result.targetName,
+          eliminatedBy: 'engineer'
+        });
+      }
+    });
+  }
+  
+  if (warpResult.doctorResults) {
+    warpResult.doctorResults.forEach(result => {
+      io.to(result.doctorId).emit('investigationResult', {
+        targetId: result.targetId,
+        targetName: result.targetName,
+        result: result.result
+      });
+    });
+  }
+  
   if (warpResult.wasProtected || warpResult.bugTargeted) {
     // Player was protected by Guardian OR Bug was targeted by Gnosia
     io.to(roomCode).emit('playerProtected', {
@@ -254,20 +284,10 @@ io.on('connection', (socket) => {
   socket.on('engineerInvestigate', ({ roomCode, targetPlayerId }) => {
     const result = gameManager.engineerInvestigate(roomCode, socket.id, targetPlayerId);
     if (result.success) {
-      socket.emit('investigationResult', {
-        targetId: targetPlayerId,
-        targetName: result.targetName,
-        result: result.result
+      // Confirm action was recorded (don't send investigation result yet)
+      socket.emit('investigationQueued', {
+        targetName: result.targetName
       });
-      
-      // If Bug was eliminated, notify all players
-      if (result.bugEliminated) {
-        io.to(roomCode).emit('bugEliminated', {
-          playerId: targetPlayerId,
-          playerName: result.targetName,
-          eliminatedBy: 'engineer'
-        });
-      }
       
       // Check if all actions complete
       if (result.allComplete) {
@@ -285,10 +305,9 @@ io.on('connection', (socket) => {
   socket.on('doctorInvestigate', ({ roomCode, targetPlayerId }) => {
     const result = gameManager.doctorInvestigate(roomCode, socket.id, targetPlayerId);
     if (result.success) {
-      socket.emit('investigationResult', {
-        targetId: targetPlayerId,
-        targetName: result.targetName,
-        result: result.result
+      // Confirm action was recorded (don't send investigation result yet)
+      socket.emit('investigationQueued', {
+        targetName: result.targetName
       });
       
       // Check if all actions complete
