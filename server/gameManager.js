@@ -136,7 +136,8 @@ function startGame(roomCode, requesterId) {
     engineer: null,
     doctor: null,
     guardian: null,
-    crew: null
+    crew: null,
+    bug: null
   };
   
   const remainingPlayers = [];
@@ -154,6 +155,8 @@ function startGame(roomCode, requesterId) {
       testPlayers.guardian = player;
     } else if (nameLower === 'crew') {
       testPlayers.crew = player;
+    } else if (nameLower === 'bug') {
+      testPlayers.bug = player;
     } else {
       remainingPlayers.push(player);
     }
@@ -277,7 +280,19 @@ function startGame(roomCode, requesterId) {
   
   // Determine if there should be a Bug (only if 8+ players)
   let bugPlayer = null;
-  if (playerCount >= 8 && shuffledCrew.length > 0) {
+  if (testPlayers.bug) {
+    // Force bug if test player exists
+    bugPlayer = testPlayers.bug;
+    bugPlayer.isBug = true;
+    bugPlayer.role = ROLES.CREW; // Bug shows as Crew
+    game.bugPlayer = bugPlayer.id;
+    
+    // Remove from shuffledCrew to avoid double assignment
+    const bugIndex = shuffledCrew.indexOf(bugPlayer);
+    if (bugIndex > -1) {
+      shuffledCrew.splice(bugIndex, 1);
+    }
+  } else if (playerCount >= 8 && shuffledCrew.length > 0) {
     // Bug spawn chance: 5% at 8 players, increasing by 5% for each additional player
     const bugChance = Math.min(0.05 * (playerCount - 7), 1.0); // Cap at 100%
     const hasBug = Math.random() < bugChance;
