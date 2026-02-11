@@ -1108,21 +1108,31 @@ socket.on('reconnected', ({ roomCode, isHost, roleData, gameState: serverGameSta
     
     // Restore role display
     const currentPlayer = serverGameState.players.find(p => p.id === socket.id);
-    let roleText = gameState.isFollower ? 'Follower' : roleData.role;
+    let roleText = gameState.isBug ? 'Bug' : (gameState.isFollower ? 'Follower' : roleData.role);
     if (currentPlayer && !currentPlayer.isAlive) {
         roleText += ' - Frozen/Dead';
     }
-    document.getElementById('player-role').textContent = roleText;
-    const roleDisplay = document.getElementById('role-display');
-    roleDisplay.classList.remove('gnosia');
     
-    if (gameState.isGnosia || gameState.isFollower) {
-        roleDisplay.classList.add('gnosia');
-        roleDisplay.style.background = 'linear-gradient(135deg, rgba(220, 38, 38, 0.3), rgba(153, 27, 27, 0.3))';
+    const roleDisplay = document.getElementById('role-display');
+    roleDisplay.className = 'role-display';
+    roleDisplay.innerHTML = `<p>Your Role: <strong>${roleText}</strong></p>`;
+    
+    if (gameState.isBug) {
+        // Bug gets purple display
+        roleDisplay.style.background = 'linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(126, 34, 206, 0.3))';
+        roleDisplay.style.border = '2px solid #a855f7';
+    } else if (gameState.isGnosia || gameState.isFollower) {
+        // Gnosia and Follower get matching red display
+        roleDisplay.style.background = 'rgba(255, 50, 50, 0.3)';
+        roleDisplay.style.border = '2px solid #ff3232';
     } else if (gameState.isEngineer || gameState.isDoctor || gameState.isGuardian) {
-        roleDisplay.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(22, 163, 74, 0.3))';
+        // Helper roles get green display
+        roleDisplay.style.background = 'rgba(74, 222, 128, 0.2)';
+        roleDisplay.style.border = '2px solid #4ade80';
     } else {
-        roleDisplay.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.3))';
+        // Regular crew get blue display
+        roleDisplay.style.background = 'rgba(59, 130, 246, 0.2)';
+        roleDisplay.style.border = '2px solid #3b82f6';
     }
     
     // Restore Gnosia info if applicable
