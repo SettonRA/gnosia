@@ -669,12 +669,11 @@ socket.on('roleAssigned', ({ role, isGnosia, isFollower, isBug, gnosiaPlayers, h
     } else if (isBug) {
         displayRole = 'Bug';
     }
-    document.getElementById('player-role').textContent = displayRole;
-    const roleDisplay = document.getElementById('role-display');
     
-    // Clear any previous styling completely
-    roleDisplay.classList.remove('gnosia', 'bug');
-    roleDisplay.style.background = 'rgba(255, 107, 107, 0.2)'; // Reset to default lobby color
+    // Rebuild role display from scratch to avoid style conflicts
+    const roleDisplay = document.getElementById('role-display');
+    roleDisplay.className = 'role-display'; // Reset to base class only
+    roleDisplay.innerHTML = `<p>Your Role: <strong>${displayRole}</strong></p>`;
     
     if (isBug) {
         // Bug gets purple display
