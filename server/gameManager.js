@@ -450,7 +450,7 @@ function submitVote(roomCode, voterId, targetPlayerId) {
     let wasBug = false;
     if (eliminatedPlayer.isBug) {
       wasBug = true;
-      eliminatedPlayer.isBug = false; // Remove bug status
+      // Keep Bug status - don't remove it so Doctor can't investigate
     }
     
     eliminatedPlayer.isAlive = false;
@@ -608,14 +608,21 @@ function completeWarpPhase(roomCode) {
       let bugEliminated = false;
       
       // Check if target is the Bug - Bug is eliminated if investigated by Engineer
+      let result;
+      let bugInfo = null;
       if (target.isBug) {
         target.isAlive = false;
-        target.isBug = false; // Remove bug status
         bugEliminated = true;
+        result = 'Bug'; // Bug shows as Bug
+        // Keep Bug status persistent
+        bugInfo = {
+          playerId: target.id,
+          playerName: target.name
+        };
+      } else {
+        // Store investigation result (Follower shows as Human)
+        result = (target.isGnosia && !target.isFollower) ? 'Gnosia' : 'Human';
       }
-
-      // Store investigation result (Follower and Bug show as Human)
-      const result = (target.isGnosia && !target.isFollower) ? 'Gnosia' : 'Human';
       if (!game.investigations.has(engineerId)) {
         game.investigations.set(engineerId, new Map());
       }
@@ -626,7 +633,8 @@ function completeWarpPhase(roomCode) {
         targetId: targetPlayerId,
         targetName: target.name,
         result,
-        bugEliminated
+        bugEliminated,
+        bugInfo
       });
     }
   }
@@ -641,8 +649,13 @@ function completeWarpPhase(roomCode) {
     }
     
     if (!target.isAlive) { // Only investigate dead players
-      // Store investigation result (Follower shows as Human)
-      const result = (target.isGnosia && !target.isFollower) ? 'Gnosia' : 'Human';
+      // Store investigation result (Follower shows as Human, Bug shows as Bug)
+      let result;
+      if (target.isBug) {
+        result = 'Bug';
+      } else {
+        result = (target.isGnosia && !target.isFollower) ? 'Gnosia' : 'Human';
+      }
       if (!game.investigations.has(doctorId)) {
         game.investigations.set(doctorId, new Map());
       }
@@ -829,6 +842,11 @@ function doctorInvestigate(roomCode, doctorId, targetPlayerId) {
   const target = game.players.get(targetPlayerId);
   if (!target || target.isAlive) {
     return { success: false, error: 'Target must be dead' };
+  }
+  
+  // Cannot investigate Bug players - they are revealed when eliminated
+  if (target.isBug) {
+    return { success: false, error: 'Bug players are already revealed' };
   }
 
   // Store the investigation target (don't execute yet)

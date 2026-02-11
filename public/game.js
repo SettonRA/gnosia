@@ -258,9 +258,16 @@ function updateGamePlayerList(players) {
         if (player.isBug && player.bugRevealed) {
             bugLabel = ` <span style="color: #a855f7; font-weight: bold;">[BUG]</span>`;
         } else if (gameState.investigations && gameState.investigations.has(player.id)) {
-            // Only show investigation result if not a revealed Bug
+            // Show investigation result
             const result = gameState.investigations.get(player.id);
-            const color = result === 'Human' ? '#4ade80' : '#ff6b6b';
+            let color;
+            if (result === 'Bug') {
+                color = '#a855f7'; // Purple for Bug
+            } else if (result === 'Human') {
+                color = '#4ade80'; // Green for Human
+            } else {
+                color = '#ff6b6b'; // Red for Gnosia
+            }
             investigationLabel = ` <span style="color: ${color}; font-weight: bold;">(${result})</span>`;
         }
         
