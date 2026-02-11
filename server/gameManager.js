@@ -8,7 +8,8 @@ const ROLES = {
   ENGINEER: 'Engineer',
   DOCTOR: 'Doctor',
   GUARDIAN: 'Guardian',
-  FOLLOWER: 'Follower'
+  FOLLOWER: 'Follower',
+  BUG: 'Bug'
 };
 
 function generateRoomCode() {
@@ -48,7 +49,8 @@ function createRoom(socketId, playerName, isPublic = false) {
     },
     investigations: new Map(), // Store investigation results per player
     playerNameToId: new Map([[playerName.toLowerCase(), socketId]]), // Map names to IDs for reconnection
-    leftPlayers: new Set() // Track players who voluntarily left (can't rejoin)
+    leftPlayers: new Set(), // Track players who voluntarily left (can't rejoin)
+    bugPlayer: null // Track the Bug player (if any)
   });
   return roomCode;
 }
@@ -273,6 +275,31 @@ function startGame(roomCode, requesterId) {
     }
   }
   
+  // Determine if there should be a Bug (only if 8+ players)
+  let bugPlayer = null;
+  if (playerCount >= 8 && shuffledCrew.length > 0) {
+    // Bug spawn chance: 5% at 8 players, increasing by 5% for each additional player
+    const bugChance = Math.min(0.05 * (playerCount - 7), 1.0); // Cap at 100%
+    const hasBug = Math.random() < bugChance;
+    
+    if (hasBug) {
+      // Assign Bug to a random crew member
+      bugPlayer = shuffledCrew[Math.floor(Math.random() * shuffledCrew.length)];
+      bugPlayer.isBug = true;
+      // Bug shows as Crew role, just like Follower
+      bugPlayer.role = ROLES.CREW;
+      
+      // Store Bug player in game state
+      game.bugPlayer = bugPlayer.id;
+      
+      // Remove bug from shuffledCrew to avoid double assignment
+      const bugIndex = shuffledCrew.indexOf(bugPlayer);
+      if (bugIndex > -1) {
+        shuffledCrew.splice(bugIndex, 1);
+      }
+    }
+  }
+  
   // Assign test helper roles first
   if (testPlayers.engineer) {
     testPlayers.engineer.role = ROLES.ENGINEER;
@@ -402,10 +429,18 @@ function submitVote(roomCode, voterId, targetPlayerId) {
     });
 
     const eliminatedPlayer = game.players.get(eliminatedPlayerId);
+    
+    // Check if eliminated player is the Bug
+    let wasBug = false;
+    if (eliminatedPlayer.isBug) {
+      wasBug = true;
+      eliminatedPlayer.isBug = false; // Remove bug status
+    }
+    
     eliminatedPlayer.isAlive = false;
 
     // Check win conditions
-    const { gameOver, winner } = checkWinCondition(game);
+    const { gameOver, winner, bugPlayer } = checkWinCondition(game);
 
     // Create allVotes array BEFORE clearing votes
     const allVotes = Array.from(game.votes.entries()).map(([voterId, targetId]) => ({
@@ -426,7 +461,8 @@ function submitVote(roomCode, voterId, targetPlayerId) {
       eliminatedPlayer: {
         id: eliminatedPlayer.id,
         name: eliminatedPlayer.name,
-        role: eliminatedPlayer.role
+        role: eliminatedPlayer.role,
+        wasBug: wasBug
       },
       voteResults: Array.from(voteCounts.entries()).map(([id, count]) => ({
         playerId: id,
@@ -441,6 +477,7 @@ function submitVote(roomCode, voterId, targetPlayerId) {
       })),
       gameOver,
       winner,
+      bugPlayer,
       finalState: gameOver ? getGameState(roomCode) : null
     };
   }
@@ -572,13 +609,19 @@ function completeWarpPhase(roomCode) {
   // Check if any guardian protected this target
   const wasProtected = targetPlayerId && Array.from(game.warpActions.guardianProtections.values()).includes(targetPlayerId);
   
+  // Check if target is the Bug (Bug is immune to Gnosia elimination)
+  const isBugTarget = target && target.isBug;
+  
   let eliminatedPlayer = null;
-  if (!wasProtected && target) {
+  let bugTargeted = false;
+  if (!wasProtected && !isBugTarget && target) {
     target.isAlive = false;
     eliminatedPlayer = {
       id: target.id,
       name: target.name
     };
+  } else if (isBugTarget) {
+    bugTargeted = true;
   }
 
   // Reset warp actions for next round
@@ -599,6 +642,7 @@ function completeWarpPhase(roomCode) {
     success: true,
     eliminatedPlayer,
     wasProtected,
+    bugTargeted,
     players: Array.from(game.players.values()).map(p => ({
       id: p.id,
       name: p.name,
@@ -607,6 +651,7 @@ function completeWarpPhase(roomCode) {
     round: game.round,
     gameOver,
     winner,
+    bugPlayer: gameOver && winner === 'bug' ? { id: game.players.get(game.bugPlayer).id, name: game.players.get(game.bugPlayer).name } : undefined,
     finalState: gameOver ? getGameState(roomCode) : null
   };
 }
@@ -640,7 +685,15 @@ function engineerInvestigate(roomCode, engineerId, targetPlayerId) {
     return { success: false, error: 'Target must be alive' };
   }
 
-  // Store investigation result (Follower shows as Human)
+  // Check if target is the Bug - Bug is eliminated if investigated by Engineer
+  let bugEliminated = false;
+  if (target.isBug) {
+    target.isAlive = false;
+    target.isBug = false; // Remove bug status
+    bugEliminated = true;
+  }
+
+  // Store investigation result (Follower and Bug show as Human)
   const result = (target.isGnosia && !target.isFollower) ? 'Gnosia' : 'Human';
   if (!game.investigations.has(engineerId)) {
     game.investigations.set(engineerId, new Map());
@@ -657,6 +710,7 @@ function engineerInvestigate(roomCode, engineerId, targetPlayerId) {
     success: true,
     targetName: target.name,
     result,
+    bugEliminated,
     allComplete
   };
 }
@@ -763,6 +817,18 @@ function checkWinCondition(game) {
   const aliveGnosia = alivePlayers.filter(p => p.isGnosia).length;
   const aliveCrew = alivePlayers.filter(p => !p.isGnosia).length; // Follower counts as crew for win condition
 
+  // Check if Bug is alive - Bug wins if it survives to the end
+  if (game.bugPlayer) {
+    const bugPlayer = game.players.get(game.bugPlayer);
+    if (bugPlayer && bugPlayer.isAlive && bugPlayer.isBug) {
+      // Bug is still alive and hasn't been eliminated by other means
+      // Check if game would normally be over
+      if (aliveGnosia === 0 || aliveGnosia >= aliveCrew) {
+        return { gameOver: true, winner: 'bug', bugPlayer: { id: bugPlayer.id, name: bugPlayer.name } };
+      }
+    }
+  }
+
   if (aliveGnosia === 0) {
     return { gameOver: true, winner: 'crew' };
   }
@@ -791,6 +857,7 @@ function getGameState(roomCode) {
       isAlive: p.isAlive,
       isGnosia: p.isGnosia,
       isFollower: p.isFollower,
+      isBug: p.isBug || false,
       disconnected: p.disconnected || false,
       ready: p.ready || false
     })),
@@ -857,6 +924,8 @@ function restartGame(roomCode, requesterId) {
     player.isAlive = true;
     player.role = null;
     player.isGnosia = false;
+    player.isFollower = false;
+    player.isBug = false;
     player.ready = false;
   });
   
@@ -888,6 +957,9 @@ function restartGame(roomCode, requesterId) {
   
   // Reset investigations
   game.investigations.clear();
+  
+  // Reset Bug player
+  game.bugPlayer = null;
   
   // Reset warp actions
   game.warpActions = {
@@ -1218,6 +1290,8 @@ function returnToLobby(roomCode, requesterId) {
     player.isAlive = true;
     player.role = null;
     player.isGnosia = false;
+    player.isFollower = false;
+    player.isBug = false;
     player.ready = false;
   });
   
@@ -1229,6 +1303,8 @@ function returnToLobby(roomCode, requesterId) {
       isAlive: true,
       role: null,
       isGnosia: false,
+      isFollower: false,
+      isBug: false,
       ready: false
     });
   });
@@ -1243,6 +1319,7 @@ function returnToLobby(roomCode, requesterId) {
   game.round = 0;
   game.votes.clear();
   game.investigations.clear();
+  game.bugPlayer = null;
   game.warpActions = {
     engineerInvestigations: new Set(),
     doctorInvestigations: new Set(),

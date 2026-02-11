@@ -17,8 +17,8 @@ const PORT = process.env.PORT || 3000;
 
 // Helper function to handle warp phase end
 function handleWarpPhaseEnd(io, roomCode, warpResult) {
-  if (warpResult.wasProtected) {
-    // Player was protected by Guardian
+  if (warpResult.wasProtected || warpResult.bugTargeted) {
+    // Player was protected by Guardian OR Bug was targeted by Gnosia
     io.to(roomCode).emit('playerProtected', {
       round: warpResult.round,
       players: warpResult.players
@@ -36,6 +36,7 @@ function handleWarpPhaseEnd(io, roomCode, warpResult) {
   if (warpResult.gameOver) {
     io.to(roomCode).emit('gameOver', {
       winner: warpResult.winner,
+      bugPlayer: warpResult.bugPlayer,
       finalState: warpResult.finalState
     });
   } else {
@@ -184,11 +185,20 @@ io.on('connection', (socket) => {
           allVotes: result.allVotes,
           players: result.players
         });
+        
+        // If Bug was eliminated, notify all players
+        if (result.eliminatedPlayer.wasBug) {
+          io.to(roomCode).emit('bugEliminated', {
+            playerName: result.eliminatedPlayer.name,
+            eliminatedBy: 'vote'
+          });
+        }
 
         // Check for game end
         if (result.gameOver) {
           io.to(roomCode).emit('gameOver', {
             winner: result.winner,
+            bugPlayer: result.bugPlayer,
             finalState: result.finalState
           });
         } else {
@@ -247,6 +257,14 @@ io.on('connection', (socket) => {
         targetName: result.targetName,
         result: result.result
       });
+      
+      // If Bug was eliminated, notify all players
+      if (result.bugEliminated) {
+        io.to(roomCode).emit('bugEliminated', {
+          playerName: result.targetName,
+          eliminatedBy: 'engineer'
+        });
+      }
       
       // Check if all actions complete
       if (result.allComplete) {

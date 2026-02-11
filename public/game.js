@@ -835,7 +835,7 @@ socket.on('playerEliminated', ({ eliminatedPlayer, round, players }) => {
 socket.on('playerProtected', ({ round, players }) => {
     gameState.players = players;
     updateGamePlayerList(players);
-    showNotification('The Guardian protected someone! No one was eliminated.');
+    showNotification('No one was eliminated by the Gnosia');
     document.getElementById('round-number').textContent = round;
 });
 
@@ -868,11 +868,22 @@ socket.on('gnosiaEliminationPhase', ({ alivePlayers }) => {
     }
 });
 
-socket.on('gameOver', ({ winner, finalState }) => {
+socket.on('bugEliminated', ({ playerName, eliminatedBy }) => {
+    const method = eliminatedBy === 'engineer' ? 'Engineer investigation' : 'voting';
+    showNotification(`${playerName} was the BUG and has been eliminated by ${method}!`);
+});
+
+socket.on('gameOver', ({ winner, bugPlayer, finalState }) => {
     showScreen('gameover');
     const winnerText = document.getElementById('winner-text');
-    winnerText.textContent = winner === 'crew' ? 'Crew Wins!' : 'Gnosia Win!';
-    winnerText.style.color = winner === 'crew' ? '#4ade80' : '#ff6b6b';
+    
+    if (winner === 'bug') {
+        winnerText.textContent = `Bug Wins! ${bugPlayer.name} survived to the end!`;
+        winnerText.style.color = '#a855f7'; // Purple for Bug
+    } else {
+        winnerText.textContent = winner === 'crew' ? 'Crew Wins!' : 'Gnosia Win!';
+        winnerText.style.color = winner === 'crew' ? '#4ade80' : '#ff6b6b';
+    }
     
     const resultsContainer = document.getElementById('final-results');
     resultsContainer.innerHTML = '<h3>Final Results:</h3>';
@@ -882,10 +893,12 @@ socket.on('gameOver', ({ winner, finalState }) => {
         if (player.isGnosia || player.isFollower) playerEl.classList.add('gnosia');
         if (!player.isAlive) playerEl.classList.add('eliminated');
         
-        // Determine display role (reveal Follower in results)
+        // Determine display role (reveal Follower and Bug in results)
         let displayRole = player.role;
         if (player.isFollower) {
             displayRole = 'Follower';
+        } else if (player.isBug) {
+            displayRole = 'Bug';
         }
         
         playerEl.innerHTML = `
