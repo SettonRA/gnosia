@@ -100,7 +100,8 @@ function joinRoom(roomCode, socketId, playerName) {
     isGnosia: false,
     ready: false,
     disconnected: false,
-    disconnectTime: null
+    disconnectTime: null,
+    bugRevealed: false
   });
   game.playerNameToId.set(playerName.toLowerCase(), socketId);
 
@@ -403,7 +404,9 @@ function startGame(roomCode, requesterId) {
     players: playerArray.map(p => ({
       id: p.id,
       name: p.name,
-      isAlive: p.isAlive
+      isAlive: p.isAlive,
+      isBug: p.isBug || false,
+      bugRevealed: p.bugRevealed || false
     }))
   };
 }
@@ -450,6 +453,7 @@ function submitVote(roomCode, voterId, targetPlayerId) {
     let wasBug = false;
     if (eliminatedPlayer.isBug) {
       wasBug = true;
+      eliminatedPlayer.bugRevealed = true; // Mark as revealed to all players
       // Keep Bug status - don't remove it so Doctor can't investigate
     }
     
@@ -489,7 +493,9 @@ function submitVote(roomCode, voterId, targetPlayerId) {
       players: Array.from(game.players.values()).map(p => ({
         id: p.id,
         name: p.name,
-        isAlive: p.isAlive
+        isAlive: p.isAlive,
+        isBug: p.isBug || false,
+        bugRevealed: p.bugRevealed || false
       })),
       gameOver,
       winner,
@@ -612,6 +618,7 @@ function completeWarpPhase(roomCode) {
       let bugInfo = null;
       if (target.isBug) {
         target.isAlive = false;
+        target.bugRevealed = true; // Mark as revealed to all players
         bugEliminated = true;
         result = 'Bug'; // Bug shows as Bug
         // Keep Bug status persistent
@@ -642,6 +649,11 @@ function completeWarpPhase(roomCode) {
   // Step 2: Process Doctor Investigations (only on dead players)
   const doctorResults = [];
   for (const [doctorId, targetPlayerId] of game.warpActions.doctorInvestigations.entries()) {
+    // Skip if doctor chose to skip (no valid targets)
+    if (targetPlayerId === 'skip') {
+      continue;
+    }
+    
     const target = game.players.get(targetPlayerId);
     if (!target) {
       console.error(`Doctor investigation target ${targetPlayerId} not found`);
@@ -839,6 +851,18 @@ function doctorInvestigate(roomCode, doctorId, targetPlayerId) {
     return { success: false, error: 'You have already investigated this round' };
   }
 
+  // Allow skipping if there are no valid targets (all dead players are Bugs)
+  if (targetPlayerId === null || targetPlayerId === 'skip') {
+    // Store 'skip' to mark that doctor has acted
+    game.warpActions.doctorInvestigations.set(doctorId, 'skip');
+    const allComplete = checkWarpActionsComplete(game);
+    return {
+      success: true,
+      skipped: true,
+      allComplete
+    };
+  }
+
   const target = game.players.get(targetPlayerId);
   if (!target || target.isAlive) {
     return { success: false, error: 'Target must be dead' };
@@ -955,6 +979,7 @@ function getGameState(roomCode) {
       isGnosia: p.isGnosia,
       isFollower: p.isFollower,
       isBug: p.isBug || false,
+      bugRevealed: p.bugRevealed || false,
       disconnected: p.disconnected || false,
       ready: p.ready || false
     })),
@@ -1023,6 +1048,7 @@ function restartGame(roomCode, requesterId) {
     player.isGnosia = false;
     player.isFollower = false;
     player.isBug = false;
+    player.bugRevealed = false;
     player.ready = false;
   });
   
@@ -1280,7 +1306,9 @@ function attemptReconnect(roomCode, playerName, newSocketId) {
         name: p.name,
         isAlive: p.isAlive,
         role: p.role,
-        isFollower: p.isFollower || false
+        isFollower: p.isFollower || false,
+        isBug: p.isBug || false,
+        bugRevealed: p.bugRevealed || false
       }))
     }
   };
@@ -1365,7 +1393,9 @@ function leaveGame(roomCode, socketId) {
       id: p.id,
       name: p.name,
       isAlive: p.isAlive,
-      disconnected: p.disconnected || false
+      disconnected: p.disconnected || false,
+      isBug: p.isBug || false,
+      bugRevealed: p.bugRevealed || false
     })),
     gameOver,
     winner,

@@ -511,13 +511,23 @@ function showDoctorOptions() {
     const container = document.getElementById('vote-options');
     container.innerHTML = '';
     
-    // Show dead players for investigation (excluding already investigated)
+    // Show dead players for investigation (excluding already investigated and revealed Bugs)
     const deadPlayers = gameState.players.filter(player => 
-        !player.isAlive && !gameState.investigations.has(player.id)
+        !player.isAlive && 
+        !gameState.investigations.has(player.id) &&
+        !(player.isBug && player.bugRevealed) // Exclude revealed Bug players
     ).sort((a, b) => a.name.localeCompare(b.name));
     
     if (deadPlayers.length === 0) {
-        container.innerHTML = '<p style="color: #9ca3af;">No dead players to investigate yet.</p>';
+        // Auto-skip if no valid targets
+        container.innerHTML = '<p style="color: #9ca3af;">No valid targets to investigate (all dead players are revealed Bugs).</p>';
+        socket.emit('doctorInvestigate', { 
+            roomCode: gameState.roomCode, 
+            targetPlayerId: 'skip'
+        });
+        // Mark as acted
+        if (!gameState.hasActed) gameState.hasActed = {};
+        gameState.hasActed.doctor = true;
         return;
     }
     
