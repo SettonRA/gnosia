@@ -17,64 +17,77 @@ const PORT = process.env.PORT || 3000;
 
 // Helper function to handle warp phase end
 function handleWarpPhaseEnd(io, roomCode, warpResult) {
-  // Send investigation results to investigators
-  if (warpResult.engineerResults) {
-    warpResult.engineerResults.forEach(result => {
-      io.to(result.engineerId).emit('investigationResult', {
-        targetId: result.targetId,
-        targetName: result.targetName,
-        result: result.result
+  try {
+    // Send investigation results to investigators
+    if (warpResult.engineerResults) {
+      warpResult.engineerResults.forEach(result => {
+        try {
+          io.to(result.engineerId).emit('investigationResult', {
+            targetId: result.targetId,
+            targetName: result.targetName,
+            result: result.result
+          });
+          
+          // If Bug was eliminated, notify all players
+          if (result.bugEliminated) {
+            io.to(roomCode).emit('bugEliminated', {
+              playerId: result.targetId,
+              playerName: result.targetName,
+              eliminatedBy: 'engineer'
+            });
+          }
+        } catch (err) {
+          console.error('Error sending engineer investigation result:', err);
+        }
       });
-      
-      // If Bug was eliminated, notify all players
-      if (result.bugEliminated) {
-        io.to(roomCode).emit('bugEliminated', {
-          playerId: result.targetId,
-          playerName: result.targetName,
-          eliminatedBy: 'engineer'
-        });
-      }
-    });
-  }
-  
-  if (warpResult.doctorResults) {
-    warpResult.doctorResults.forEach(result => {
-      io.to(result.doctorId).emit('investigationResult', {
-        targetId: result.targetId,
-        targetName: result.targetName,
-        result: result.result
+    }
+    
+    if (warpResult.doctorResults) {
+      warpResult.doctorResults.forEach(result => {
+        try {
+          io.to(result.doctorId).emit('investigationResult', {
+            targetId: result.targetId,
+            targetName: result.targetName,
+            result: result.result
+          });
+        } catch (err) {
+          console.error('Error sending doctor investigation result:', err);
+        }
       });
-    });
-  }
-  
-  if (warpResult.wasProtected || warpResult.bugTargeted) {
-    // Player was protected by Guardian OR Bug was targeted by Gnosia
-    io.to(roomCode).emit('playerProtected', {
-      round: warpResult.round,
-      players: warpResult.players
-    });
-  } else if (warpResult.eliminatedPlayer) {
-    // Player was eliminated
-    io.to(roomCode).emit('playerEliminated', {
-      eliminatedPlayer: warpResult.eliminatedPlayer,
-      round: warpResult.round,
-      players: warpResult.players
-    });
-  }
+    }
+    
+    if (warpResult.wasProtected || warpResult.bugTargeted) {
+      // Player was protected by Guardian OR Bug was targeted by Gnosia
+      io.to(roomCode).emit('playerProtected', {
+        round: warpResult.round,
+        players: warpResult.players
+      });
+    } else if (warpResult.eliminatedPlayer) {
+      // Player was eliminated
+      io.to(roomCode).emit('playerEliminated', {
+        eliminatedPlayer: warpResult.eliminatedPlayer,
+        round: warpResult.round,
+        players: warpResult.players
+      });
+    }
 
-  // Check for game end
-  if (warpResult.gameOver) {
-    io.to(roomCode).emit('gameOver', {
-      winner: warpResult.winner,
-      bugPlayer: warpResult.bugPlayer,
-      finalState: warpResult.finalState
-    });
-  } else {
-    // Start new debate phase
-    io.to(roomCode).emit('phaseChange', { 
-      phase: 'debate',
-      round: warpResult.round
-    });
+    // Check for game end
+    if (warpResult.gameOver) {
+      io.to(roomCode).emit('gameOver', {
+        winner: warpResult.winner,
+        bugPlayer: warpResult.bugPlayer,
+        finalState: warpResult.finalState
+      });
+    } else {
+      // Start new debate phase
+      io.to(roomCode).emit('phaseChange', { 
+        phase: 'debate',
+        round: warpResult.round
+      });
+    }
+  } catch (error) {
+    console.error('Error in handleWarpPhaseEnd:', error);
+    io.to(roomCode).emit('error', { message: 'An error occurred during warp phase completion' });
   }
 }
 

@@ -599,7 +599,12 @@ function completeWarpPhase(roomCode) {
   const engineerResults = [];
   for (const [engineerId, targetPlayerId] of game.warpActions.engineerInvestigations.entries()) {
     const target = game.players.get(targetPlayerId);
-    if (target && target.isAlive) { // Check if still alive (not eliminated by earlier investigation)
+    if (!target) {
+      console.error(`Engineer investigation target ${targetPlayerId} not found`);
+      continue;
+    }
+    
+    if (target.isAlive) { // Only investigate alive players
       let bugEliminated = false;
       
       // Check if target is the Bug - Bug is eliminated if investigated by Engineer
@@ -630,7 +635,12 @@ function completeWarpPhase(roomCode) {
   const doctorResults = [];
   for (const [doctorId, targetPlayerId] of game.warpActions.doctorInvestigations.entries()) {
     const target = game.players.get(targetPlayerId);
-    if (target && !target.isAlive) {
+    if (!target) {
+      console.error(`Doctor investigation target ${targetPlayerId} not found`);
+      continue;
+    }
+    
+    if (!target.isAlive) { // Only investigate dead players
       // Store investigation result (Follower shows as Human)
       const result = (target.isGnosia && !target.isFollower) ? 'Gnosia' : 'Human';
       if (!game.investigations.has(doctorId)) {
@@ -674,6 +684,10 @@ function completeWarpPhase(roomCode) {
 
   const target = targetPlayerId ? game.players.get(targetPlayerId) : null;
   
+  if (targetPlayerId && !target) {
+    console.error(`Gnosia target ${targetPlayerId} not found in players`);
+  }
+  
   // Check if any guardian protected this target
   const wasProtected = targetPlayerId && Array.from(game.warpActions.guardianProtections.values()).includes(targetPlayerId);
   
@@ -709,6 +723,27 @@ function completeWarpPhase(roomCode) {
   // Check win conditions
   const { gameOver, winner } = checkWinCondition(game);
 
+  // Safely map players
+  const players = [];
+  for (const player of game.players.values()) {
+    if (player) {
+      players.push({
+        id: player.id,
+        name: player.name,
+        isAlive: player.isAlive
+      });
+    }
+  }
+
+  // Safely get bug player info
+  let bugPlayerInfo = undefined;
+  if (gameOver && winner === 'bug' && game.bugPlayer) {
+    const bugPlayer = game.players.get(game.bugPlayer);
+    if (bugPlayer) {
+      bugPlayerInfo = { id: bugPlayer.id, name: bugPlayer.name };
+    }
+  }
+
   return {
     success: true,
     eliminatedPlayer,
@@ -716,15 +751,11 @@ function completeWarpPhase(roomCode) {
     bugTargeted,
     engineerResults,
     doctorResults,
-    players: Array.from(game.players.values()).map(p => ({
-      id: p.id,
-      name: p.name,
-      isAlive: p.isAlive
-    })),
+    players,
     round: game.round,
     gameOver,
     winner,
-    bugPlayer: gameOver && winner === 'bug' ? { id: game.players.get(game.bugPlayer).id, name: game.players.get(game.bugPlayer).name } : undefined,
+    bugPlayer: bugPlayerInfo,
     finalState: gameOver ? getGameState(roomCode) : null
   };
 }
