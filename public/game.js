@@ -677,7 +677,8 @@ socket.on('roleAssigned', ({ role, isGnosia, isFollower, isBug, gnosiaPlayers, h
     
     if (isBug) {
         // Bug gets purple display
-        roleDisplay.classList.add('bug');
+        roleDisplay.style.background = 'linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(126, 34, 206, 0.3))';
+        roleDisplay.style.border = '2px solid #a855f7';
         showNotification('You are the BUG! Survive until the end to win. You appear as Human in investigations.');
         
         if (gnosiaPlayers) {
@@ -685,7 +686,9 @@ socket.on('roleAssigned', ({ role, isGnosia, isFollower, isBug, gnosiaPlayers, h
             document.getElementById('gnosia-count').textContent = gameState.totalGnosiaCount;
         }
     } else if (isGnosia) {
-        roleDisplay.classList.add('gnosia');
+        // Gnosia gets red display
+        roleDisplay.style.background = 'rgba(255, 50, 50, 0.3)';
+        roleDisplay.style.border = '2px solid #ff3232';
         
         // Store Gnosia player IDs for filtering
         if (gnosiaPlayers) {
@@ -706,9 +709,9 @@ socket.on('roleAssigned', ({ role, isGnosia, isFollower, isBug, gnosiaPlayers, h
             }
         }
     } else if (isFollower) {
-        // Follower gets red display since they're Gnosia-aligned
-        roleDisplay.classList.add('gnosia');
-        roleDisplay.style.background = 'linear-gradient(135deg, rgba(220, 38, 38, 0.3), rgba(153, 27, 27, 0.3))';
+        // Follower gets same red display as Gnosia since they're aligned
+        roleDisplay.style.background = 'rgba(255, 50, 50, 0.3)';
+        roleDisplay.style.border = '2px solid #ff3232';
         
         // Follower notification
         if (gnosiaPlayers) {
@@ -717,19 +720,30 @@ socket.on('roleAssigned', ({ role, isGnosia, isFollower, isBug, gnosiaPlayers, h
         }
         showNotification('You are a Follower! Win with Gnosia but stay hidden. You appear as Human in investigations.');
     } else {
+        // Distinguish between helper roles and regular crew
+        if (isEngineer || isDoctor || isGuardian) {
+            // Helper roles get green display
+            roleDisplay.style.background = 'rgba(74, 222, 128, 0.2)';
+            roleDisplay.style.border = '2px solid #4ade80';
+            
+            // Show helper role notification
+            if (isEngineer) {
+                showNotification('You are the Engineer! During warp phase, you can investigate alive players.');
+            } else if (isDoctor) {
+                showNotification('You are the Doctor! During warp phase, you can investigate dead players.');
+            } else if (isGuardian) {
+                showNotification('You are the Guardian! During warp phase, you can protect a player from elimination.');
+            }
+        } else {
+            // Regular crew get blue display
+            roleDisplay.style.background = 'rgba(59, 130, 246, 0.2)';
+            roleDisplay.style.border = '2px solid #3b82f6';
+        }
+        
         // For crew members, store the total count
         if (gnosiaPlayers) {
             gameState.totalGnosiaCount = gnosiaPlayers.length;
             document.getElementById('gnosia-count').textContent = gameState.totalGnosiaCount;
-        }
-        
-        // Show helper role notification
-        if (isEngineer) {
-            showNotification('You are the Engineer! During warp phase, you can investigate alive players.');
-        } else if (isDoctor) {
-            showNotification('You are the Doctor! During warp phase, you can investigate dead players.');
-        } else if (isGuardian) {
-            showNotification('You are the Guardian! During warp phase, you can protect a player from elimination.');
         }
     }
     
@@ -739,15 +753,6 @@ socket.on('roleAssigned', ({ role, isGnosia, isFollower, isBug, gnosiaPlayers, h
         document.getElementById('engineer-count').textContent = helperRoleCounts.engineer || 0;
         document.getElementById('doctor-count').textContent = helperRoleCounts.doctor || 0;
         document.getElementById('guardian-count').textContent = helperRoleCounts.guardian || 0;
-    }
-    
-    // Update role display color based on role
-    if (isGnosia || isFollower) {
-        roleDisplay.style.background = 'linear-gradient(135deg, rgba(220, 38, 38, 0.3), rgba(153, 27, 27, 0.3))';
-    } else if (isEngineer || isDoctor || isGuardian) {
-        roleDisplay.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(22, 163, 74, 0.3))';
-    } else {
-        roleDisplay.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.3))';
     }
 });
 
